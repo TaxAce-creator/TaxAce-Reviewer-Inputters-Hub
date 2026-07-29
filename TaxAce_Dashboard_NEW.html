@@ -71,6 +71,15 @@
     }
     .theme-toggle:hover { border-color: var(--ink-soft); background: var(--paper-raised); }
 
+    .sheet-link-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 10px 16px; border-radius: 6px; border: 1px solid var(--green);
+      background: var(--green-bg); color: var(--green);
+      font-size: 13px; font-weight: 600; text-decoration: none; cursor: pointer;
+      transition: all .15s ease; white-space: nowrap;
+    }
+    .sheet-link-btn:hover { opacity: 0.85; }
+
     .container {
       max-width: 1400px;
       margin: 0 auto;
@@ -500,6 +509,7 @@
           <option value="Dani">Dani</option>
         </select>
         <button onclick="refreshData()">🔄 Refresh</button>
+        <a href="https://docs.google.com/spreadsheets/d/1C5DzuHvKfursdBp_KVZ_4af2Ym7Oef7BAlQ8kqx5OGg/edit?gid=2126218207#gid=2126218207" target="_blank" rel="noopener" class="sheet-link-btn">📊 Open Spreadsheet</a>
         <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()">🌙 Dark</button>
       </div>
     </div>
