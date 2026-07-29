@@ -458,6 +458,16 @@
       padding: 4px 10px;
     }
     .lightbox-close:hover { color: #ccc; background: none; }
+
+    .save-toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
+      background: var(--ink); color: white; padding: 12px 20px; border-radius: 8px;
+      font-size: 13px; font-weight: 600; opacity: 0; pointer-events: none;
+      transition: opacity .2s ease, transform .2s ease; z-index: 2000;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+    }
+    .save-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .save-toast.error { background: var(--red); }
     .add-term-form {
       display: none; background: var(--paper-raised); border: 1px solid var(--line);
       border-radius: 8px; padding: 18px 20px; margin-bottom: 20px;
@@ -851,16 +861,35 @@
 
     async function loadGlossaryState(){
       try{
-        const result = await window.storage.get('taxace-dashboard-glossary', false);
-        if(result && result.value){
-          const parsed = JSON.parse(result.value);
+        const raw = localStorage.getItem('taxace-dashboard-glossary');
+        if(raw){
+          const parsed = JSON.parse(raw);
           if(Array.isArray(parsed) && parsed.length) GLOSSARY_TERMS = parsed;
         }
-      }catch(e){ /* nothing saved yet, use the built-in defaults */ }
+      }catch(e){ console.error('Could not load saved glossary', e); }
     }
     async function saveGlossaryState(){
-      try{ await window.storage.set('taxace-dashboard-glossary', JSON.stringify(GLOSSARY_TERMS), false); }
-      catch(e){ console.error('Could not save glossary', e); }
+      try{
+        localStorage.setItem('taxace-dashboard-glossary', JSON.stringify(GLOSSARY_TERMS));
+        showSaveToast('✓ Saved', false);
+      }catch(e){
+        console.error('Could not save glossary', e);
+        showSaveToast('⚠ Could not save — your browser storage may be full', true);
+      }
+    }
+
+    // ---- Save confirmation toast ----
+    function showSaveToast(message, isError){
+      let toast = document.getElementById('saveToast');
+      if(!toast){
+        toast = document.createElement('div');
+        toast.id = 'saveToast';
+        document.body.appendChild(toast);
+      }
+      toast.textContent = message;
+      toast.className = 'save-toast' + (isError ? ' error' : '') + ' show';
+      clearTimeout(toast._hideTimer);
+      toast._hideTimer = setTimeout(function(){ toast.classList.remove('show'); }, 2600);
     }
 
     function renderGlossary(filter){
