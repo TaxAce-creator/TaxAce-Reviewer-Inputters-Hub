@@ -635,17 +635,27 @@
 
     // ========== FETCH DATA ==========
     function refreshData() {
+      const btn = document.querySelector('button[onclick="refreshData()"]');
+      const originalText = btn ? btn.textContent : '';
+      if(btn){ btn.textContent = '🔄 Refreshing...'; btn.disabled = true; }
+
       fetch(APPS_SCRIPT_URL)
         .then(response => response.json())
         .then(data => {
           allData = data.data || [];
           filteredData = [...allData];
-          document.getElementById('recordCount').textContent = data.count || 0;
+          const count = data.count || 0;
+          document.getElementById('recordCount').textContent = count;
           renderAllTabs();
+          showSaveToast('✓ Refreshed — ' + count + ' records', false);
         })
         .catch(error => {
           console.error('Error:', error);
           document.getElementById('recordCount').textContent = '0';
+          showSaveToast('⚠ Refresh failed — check your connection', true);
+        })
+        .finally(() => {
+          if(btn){ btn.textContent = originalText; btn.disabled = false; }
         });
     }
 
@@ -869,12 +879,20 @@
       }catch(e){ console.error('Could not load saved glossary', e); }
     }
     async function saveGlossaryState(){
+      const payload = JSON.stringify(GLOSSARY_TERMS);
       try{
-        localStorage.setItem('taxace-dashboard-glossary', JSON.stringify(GLOSSARY_TERMS));
+        localStorage.setItem('taxace-dashboard-glossary', payload);
+        // Read it back immediately — some private-browsing modes let setItem()
+        // succeed silently without actually persisting anything, so don't trust
+        // a lack of a thrown error as proof the save worked.
+        const verify = localStorage.getItem('taxace-dashboard-glossary');
+        if(verify !== payload){
+          throw new Error('Saved data did not verify on read-back — your browser may be blocking storage (private/incognito mode, or a file:// page opened directly instead of a hosted URL).');
+        }
         showSaveToast('✓ Saved', false);
       }catch(e){
         console.error('Could not save glossary', e);
-        showSaveToast('⚠ Could not save — your browser storage may be full', true);
+        showSaveToast('⚠ Not actually saved — ' + (e.message.includes('quota') ? 'storage is full' : 'check if private/incognito mode is blocking storage'), true);
       }
     }
 
