@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaxAce Reviewer Hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F7F6F2;
+    --card:#FFFFFF;
+    --border:#E7E4DC;
+    --ink:#1A1A18;
+    --ink-soft:#57544B;
+    --muted:#918D7E;
+    --accent:#2F4FCB;
+    --icon-a-bg:#DCF2E3; --icon-a-fg:#1F9D55;
+    --icon-b-bg:#E7E4F9; --icon-b-fg:#6D5BD0;
+    --card-hover-border:#DAD6CB;
+    --radius:12px;
+    --shadow:0 1px 2px rgba(26,26,24,0.04), 0 8px 24px rgba(26,26,24,0.05);
+  }
+
+  [data-theme="dark"]{
+    --bg:#14171B;
+    --card:#1E2227;
+    --border:#2E333A;
+    --ink:#F0EEE8;
+    --ink-soft:#C7C4BA;
+    --muted:#8B887F;
+    --accent:#8FA8FF;
+    --icon-a-bg:#173625; --icon-a-fg:#4CC98A;
+    --icon-b-bg:#2A2547; --icon-b-fg:#B0A0FF;
+    --card-hover-border:#3B414A;
+    --shadow:0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.25);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{background:var(--bg);color:var(--ink);font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh;transition:background-color .2s ease, color .2s ease;}
+
+  .nav{
+    background:var(--card);border-bottom:1px solid var(--border);
+    padding:16px 28px;display:flex;align-items:center;gap:10px;
+  }
+  .nav .logo{
+    width:26px;height:26px;border-radius:7px;background:#1F7A4D;color:#fff;
+    display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;
+    letter-spacing:0.02em;
+  }
+  .nav .title{font-size:14.5px;font-weight:600;color:var(--ink);}
+  .nav .eyebrow{font-size:12.5px;color:var(--muted);}
+
+  .theme-toggle{
+    display:inline-flex;align-items:center;gap:6px;margin-left:auto;
+    padding:7px 12px;border-radius:6px;border:1px solid var(--border);
+    background:var(--card);color:var(--ink);
+    font-family:'Inter',sans-serif;font-size:12px;font-weight:600;
+    cursor:pointer;transition:all .15s ease;
+  }
+  .theme-toggle:hover{border-color:var(--ink-soft);}
+
+  .wrap{max-width:760px;margin:0 auto;padding:64px 24px 80px;}
+
+  .hero{text-align:center;margin-bottom:52px;}
+  .hero .eyebrow{
+    font-size:11.5px;font-weight:600;letter-spacing:0.10em;text-transform:uppercase;
+    color:var(--muted);margin-bottom:14px;
+  }
+  .hero h1{
+    font-size:32px;font-weight:700;margin:0 0 14px;letter-spacing:-0.015em;color:var(--ink);
+  }
+  .hero p{
+    font-size:14.5px;color:var(--ink-soft);max-width:480px;margin:0 auto;line-height:1.65;
+  }
+
+  .section-label{
+    text-align:center;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;
+    color:var(--muted);margin-bottom:18px;
+  }
+
+  .cards{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:24px;}
+  @media (max-width:620px){ .cards{grid-template-columns:1fr;} }
+
+  .card{
+    background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+    padding:24px 24px 20px;display:flex;flex-direction:column;
+    text-decoration:none;color:inherit;transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease, background-color .15s ease;
+  }
+  .card:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:var(--card-hover-border);}
+
+  .card .icon{
+    width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+    margin-bottom:16px;
+  }
+  .card.a .icon{background:var(--icon-a-bg);}
+  .card.b .icon{background:var(--icon-b-bg);}
+
+  .card .eyebrow{
+    font-size:12px;font-weight:600;margin-bottom:5px;
+  }
+  .card.a .eyebrow{color:var(--icon-a-fg);}
+  .card.b .eyebrow{color:var(--icon-b-fg);}
+
+  .card h3{font-size:17px;font-weight:700;margin:0 0 10px;color:var(--ink);}
+  .card .desc{font-size:13.2px;color:var(--ink-soft);line-height:1.6;margin:0 0 18px;flex:1;}
+
+  .card .meta{
+    display:flex;align-items:center;justify-content:space-between;
+    border-top:1px solid var(--border);padding-top:12px;
+  }
+  .card .meta .tags{font-size:11px;color:var(--muted);}
+  .card .meta .arrow{font-size:15px;color:var(--ink-soft);transition:transform .15s ease, color .15s ease;}
+  .card:hover .meta .arrow{transform:translateX(3px);color:var(--accent);}
+
+  /* Coming soon card — same shell, visually disabled */
+  .card.soon{cursor:default;opacity:0.72;}
+  .card.soon:hover{transform:none;box-shadow:none;border-color:var(--border);}
+  .card.soon:hover .meta .arrow{transform:none;color:var(--ink-soft);}
+  .card.soon .icon{background:var(--border);}
+  .card.soon .eyebrow{color:var(--muted);}
+  .soon-badge{
+    display:inline-block;font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;
+    padding:3px 8px;border-radius:20px;background:var(--border);color:var(--ink-soft);margin-left:8px;
+  }
+
+  .rule-bar{
+    background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+    padding:16px 22px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+    justify-content:space-between;font-size:13px;
+  }
+  .rule-bar .left{display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+  .rule-bar .label{font-weight:700;color:var(--ink);white-space:nowrap;}
+  .rule-bar .sep{color:var(--border);}
+  .rule-bar .desc{color:var(--ink-soft);}
+  .rule-bar a{color:var(--accent);text-decoration:none;font-weight:600;white-space:nowrap;}
+  .rule-bar a:hover{text-decoration:underline;}
+</style>
+</head>
+<body>
+
+<div class="nav">
+  <div class="logo">TA</div>
+  <div class="title">TaxAce Reviewer Hub</div>
+  <div class="eyebrow">&nbsp;· Tax Review</div>
+  <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()">🌙 Dark</button>
+</div>
+
+<div class="wrap">
+  <div class="hero">
+    <div class="eyebrow">Tax Review</div>
+    <h1>Your review toolkit, one place</h1>
+    <p>Everything reviewers need to track pipeline status and client documents. Open a tool below — every edit saves automatically.</p>
+  </div>
+
+  <div class="section-label">Live Tools</div>
+
+  <div class="cards">
+    <a class="card a" href="TaxAce_Dashboard_NEW.html">
+      <div class="icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--icon-a-fg)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+      </div>
+      <div class="eyebrow">Team-Wide · Live Sync</div>
+      <h3>TaxAce Reviewers Dashboard</h3>
+      <p class="desc">Overview, Urgent Follow-Ups, All Clients, Document Status, By Reviewer, and Completed — synced live from the spreadsheet, plus the tax term glossary with photo references built in.</p>
+      <div class="meta">
+        <span class="tags">Live sync · glossary · photo references</span>
+        <span class="arrow">→</span>
+      </div>
+    </a>
+
+    <div class="card b soon">
+      <div class="icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink-soft)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>
+      </div>
+      <div class="eyebrow">Inputters<span class="soon-badge">Coming Soon</span></div>
+      <h3>TaxAce Inputters Dashboard</h3>
+      <p class="desc">A dedicated view for inputters — tracking document intake and data entry status ahead of review. In progress.</p>
+      <div class="meta">
+        <span class="tags">Not yet available</span>
+        <span class="arrow">→</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="rule-bar">
+    <div class="left">
+      <span class="label">The one rule</span>
+      <span class="sep">|</span>
+      <span class="desc">Every edit saves automatically. Nothing leaves either tool unless you export it.</span>
+    </div>
+    <a href="https://drive.google.com/drive/folders/1NisdnjBrQR1HXnbF6sKwOubicfxYL-kZ" target="_blank" rel="noopener">Open Reports Inbox →</a>
+  </div>
+</div>
+
+<script>
+let inMemoryTheme = 'light';
+function getSavedTheme(){
+  try{ return localStorage.getItem('taxace-hub-theme') || inMemoryTheme; }
+  catch(e){ return inMemoryTheme; }
+}
+function saveTheme(theme){
+  inMemoryTheme = theme;
+  try{ localStorage.setItem('taxace-hub-theme', theme); }catch(e){ /* session-only fallback */ }
+}
+function applyTheme(theme){
+  document.documentElement.setAttribute('data-theme', theme === 'dark' ? 'dark' : 'light');
+  const btn = document.getElementById('themeToggle');
+  if(btn) btn.textContent = theme === 'dark' ? '☀️ Light' : '🌙 Dark';
+}
+function toggleTheme(){
+  const current = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+  const next = current === 'dark' ? 'light' : 'dark';
+  applyTheme(next);
+  saveTheme(next);
+}
+applyTheme(getSavedTheme());
+</script>
+
+</body>
+</html>
