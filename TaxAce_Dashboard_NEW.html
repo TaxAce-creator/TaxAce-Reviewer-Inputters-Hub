@@ -65,17 +65,18 @@
 
     .theme-toggle {
       display: inline-flex; align-items: center; gap: 6px;
-      padding: 10px 16px; border-radius: 6px; border: 1px solid var(--line);
+      padding: 7px 12px; border-radius: 6px; border: 1px solid var(--line);
       background: var(--paper-raised); color: var(--ink);
-      font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s ease;
+      font-size: 12px; font-weight: 600; cursor: pointer; transition: all .15s ease;
+      white-space: nowrap;
     }
     .theme-toggle:hover { border-color: var(--ink-soft); background: var(--paper-raised); }
 
     .sheet-link-btn {
       display: inline-flex; align-items: center; gap: 6px;
-      padding: 10px 16px; border-radius: 6px; border: 1px solid var(--green);
+      padding: 7px 12px; border-radius: 6px; border: 1px solid var(--green);
       background: var(--green-bg); color: var(--green);
-      font-size: 13px; font-weight: 600; text-decoration: none; cursor: pointer;
+      font-size: 12px; font-weight: 600; text-decoration: none; cursor: pointer;
       transition: all .15s ease; white-space: nowrap;
     }
     .sheet-link-btn:hover { opacity: 0.85; }
@@ -90,45 +91,52 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 30px;
+      flex-wrap: wrap;
+      row-gap: 10px;
+      margin-bottom: 20px;
     }
 
     .header-left {
       display: flex;
       align-items: center;
-      gap: 15px;
+      gap: 10px;
     }
 
     .logo {
-      font-size: 28px;
+      font-size: 22px;
     }
 
     .title {
-      font-size: 24px;
+      font-size: 18px;
       font-weight: 600;
+      white-space: nowrap;
     }
 
     .subtitle {
-      font-size: 12px;
+      font-size: 11px;
       color: var(--slate);
+      white-space: nowrap;
     }
 
     .header-right {
       display: flex;
-      gap: 15px;
+      gap: 8px;
       align-items: center;
+      flex-wrap: wrap;
+      row-gap: 8px;
     }
 
     .status-badge {
-      padding: 8px 12px;
+      padding: 6px 10px;
       background: #dcfce7;
       color: #16a34a;
       border-radius: 6px;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 500;
       display: flex;
       align-items: center;
       gap: 6px;
+      white-space: nowrap;
     }
 
     .status-badge::before {
@@ -143,18 +151,18 @@
 
     input[type="text"],
     select {
-      padding: 10px 12px;
+      padding: 7px 10px;
       border: 1px solid var(--line);
       border-radius: 6px;
-      font-size: 14px;
+      font-size: 13px;
     }
 
     input[type="text"] {
-      width: 250px;
+      width: 160px;
     }
 
     button {
-      padding: 10px 20px;
+      padding: 7px 14px;
       background: var(--blue);
       color: white;
       border: none;
@@ -518,6 +526,9 @@
           <option value="Lyndon">Lyndon</option>
           <option value="Dani">Dani</option>
         </select>
+        <select id="subtaskFilter">
+          <option value="">All Subtasks</option>
+        </select>
         <button onclick="refreshData()">🔄 Refresh</button>
         <a href="https://docs.google.com/spreadsheets/d/1C5DzuHvKfursdBp_KVZ_4af2Ym7Oef7BAlQ8kqx5OGg/edit?gid=2126218207#gid=2126218207" target="_blank" rel="noopener" class="sheet-link-btn">📊 Open Spreadsheet</a>
         <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()">🌙 Dark</button>
@@ -631,6 +642,7 @@
       refreshData();
       document.getElementById('searchInput').addEventListener('keyup', filterData);
       document.getElementById('reviewerFilter').addEventListener('change', filterData);
+      document.getElementById('subtaskFilter').addEventListener('change', filterData);
     });
 
     // ========== FETCH DATA ==========
@@ -646,6 +658,7 @@
           filteredData = [...allData];
           const count = data.count || 0;
           document.getElementById('recordCount').textContent = count;
+          populateSubtaskFilter();
           renderAllTabs();
           showSaveToast('✓ Refreshed — ' + count + ' records', false);
         })
@@ -663,14 +676,37 @@
     function filterData() {
       const searchTerm = document.getElementById('searchInput').value.toLowerCase();
       const reviewer = document.getElementById('reviewerFilter').value;
+      const subtask = document.getElementById('subtaskFilter').value;
 
       filteredData = allData.filter(record => {
         const matchesSearch = !searchTerm || record.clientName.toLowerCase().includes(searchTerm);
         const matchesReviewer = !reviewer || record.reviewerTab === reviewer;
-        return matchesSearch && matchesReviewer;
+        const matchesSubtask = !subtask || (record.subtaskName && record.subtaskName.toLowerCase() === subtask.toLowerCase());
+        return matchesSearch && matchesReviewer && matchesSubtask;
       });
 
       renderAllTabs();
+    }
+
+    // ========== POPULATE SUBTASK FILTER ==========
+    function populateSubtaskFilter() {
+      const subtaskNames = [...new Set(allData
+        .filter(record => record.subtaskName && record.subtaskName.trim())
+        .map(record => record.subtaskName.trim())
+        .sort())];
+
+      const select = document.getElementById('subtaskFilter');
+      const currentValue = select.value;
+      select.innerHTML = '<option value="">All Subtasks</option>';
+      
+      subtaskNames.forEach(name => {
+        const option = document.createElement('option');
+        option.value = name;
+        option.textContent = name;
+        select.appendChild(option);
+      });
+
+      select.value = currentValue;
     }
 
     // ========== TAB SWITCHING ==========
@@ -704,12 +740,13 @@
       document.getElementById('withReviewer').textContent = stats.withReviewer;
       document.getElementById('totalPending').textContent = stats.pending;
 
-      let html = '<table><thead><tr><th>Client Name</th><th>Task Name</th><th>Subtask Status</th><th>Reviewer</th><th>Pending Docs</th><th>Tax Year</th></tr></thead><tbody>';
+      let html = '<table><thead><tr><th>Client Name</th><th>Task Name</th><th>Subtask Name</th><th>Subtask Status</th><th>Reviewer</th><th>Pending Docs</th><th>Tax Year</th></tr></thead><tbody>';
       
       filteredData.slice(0, 10).forEach(r => {
         html += `<tr>
           <td><strong>${r.clientName}</strong></td>
           <td>${r.taskName}</td>
+          <td>${r.subtaskName || '-'}</td>
           <td>${r.subtaskStatus}</td>
           <td>${r.reviewerTab || '-'}</td>
           <td><span class="badge ${r.pendingDocumentCount > 0 ? 'badge-pending' : 'badge-uploaded'}">${r.pendingDocumentCount || 0}</span></td>
@@ -772,12 +809,13 @@
     }
 
     function renderAllClients() {
-      let html = '<table><thead><tr><th>Client Name</th><th>Task Name</th><th>Task Status</th><th>Subtask Status</th><th>Tax Year</th><th>Return Type</th><th>Reviewer</th><th>Pending Docs</th><th>Assignee</th></tr></thead><tbody>';
+      let html = '<table><thead><tr><th>Client Name</th><th>Task Name</th><th>Subtask Name</th><th>Task Status</th><th>Subtask Status</th><th>Tax Year</th><th>Return Type</th><th>Reviewer</th><th>Pending Docs</th><th>Assignee</th></tr></thead><tbody>';
       
       filteredData.forEach(r => {
         html += `<tr>
           <td><strong>${r.clientName}</strong></td>
           <td>${r.taskName}</td>
+          <td>${r.subtaskName || '-'}</td>
           <td>${r.taskStatus}</td>
           <td>${r.subtaskStatus}</td>
           <td>${r.taskTaxYear}</td>
@@ -803,12 +841,13 @@
       let html = '';
       reviewers.forEach((records, reviewer) => {
         html += `<h3 style="margin-top: 28px; margin-bottom: 16px;">${reviewer} (${records.length} records)</h3>`;
-        html += '<table><thead><tr><th>Client Name</th><th>Task Name</th><th>Subtask Status</th><th>Pending Docs</th><th>Date Reviewed</th><th>Return Type</th></tr></thead><tbody>';
+        html += '<table><thead><tr><th>Client Name</th><th>Task Name</th><th>Subtask Name</th><th>Subtask Status</th><th>Pending Docs</th><th>Date Reviewed</th><th>Return Type</th></tr></thead><tbody>';
         
         records.forEach(r => {
           html += `<tr>
             <td><strong>${r.clientName}</strong></td>
             <td>${r.taskName}</td>
+            <td>${r.subtaskName || '-'}</td>
             <td>${r.subtaskStatus}</td>
             <td><span class="badge ${r.pendingDocumentCount > 0 ? 'badge-pending' : 'badge-uploaded'}">${r.pendingDocumentCount || 0}</span></td>
             <td>${r.dateReviewed || '-'}</td>
@@ -825,12 +864,13 @@
     function renderPending() {
       const pending = filteredData.filter(r => r.pendingDocumentCount > 0);
       let html = `<h3 style="margin-bottom: 16px;">Pending Review (${pending.length} items)</h3>`;
-      html += '<table><thead><tr><th>Client Name</th><th>Task Name</th><th>Subtask Status</th><th>Pending Docs</th><th>Reviewer</th><th>Date Requested</th><th>Tax Year</th></tr></thead><tbody>';
+      html += '<table><thead><tr><th>Client Name</th><th>Task Name</th><th>Subtask Name</th><th>Subtask Status</th><th>Pending Docs</th><th>Reviewer</th><th>Date Requested</th><th>Tax Year</th></tr></thead><tbody>';
       
       pending.forEach(r => {
         html += `<tr>
           <td><strong>${r.clientName}</strong></td>
           <td>${r.taskName}</td>
+          <td>${r.subtaskName || '-'}</td>
           <td>${r.subtaskStatus}</td>
           <td><span class="badge badge-pending">${r.pendingDocumentCount}</span></td>
           <td>${r.reviewerTab || '-'}</td>
@@ -846,12 +886,13 @@
     function renderCompleted() {
       const completed = filteredData.filter(r => r.isCompleted === true);
       let html = '<h3 style="margin-bottom: 16px;">Completed (' + completed.length + ' items)</h3>';
-      html += '<table><thead><tr><th>Client Name</th><th>Task Name</th><th>Subtask Status</th><th>Reviewer</th><th>Date Completed</th><th>Return Type</th><th>Assignee</th></tr></thead><tbody>';
+      html += '<table><thead><tr><th>Client Name</th><th>Task Name</th><th>Subtask Name</th><th>Subtask Status</th><th>Reviewer</th><th>Date Completed</th><th>Return Type</th><th>Assignee</th></tr></thead><tbody>';
       
       completed.forEach(function(r) {
         html += '<tr>';
         html += '<td><strong>' + r.clientName + '</strong></td>';
         html += '<td>' + r.taskName + '</td>';
+        html += '<td>' + (r.subtaskName || '-') + '</td>';
         html += '<td>' + r.subtaskStatus + '</td>';
         html += '<td>' + (r.reviewerTab || '-') + '</td>';
         html += '<td>' + (r.dateCompleted || '-') + '</td>';
