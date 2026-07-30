@@ -808,17 +808,17 @@
           <div class="client-card">
             <div class="client-card-header" onclick="toggleDocuments(this)">
               <div style="display: flex; align-items: center; flex: 1;">
-                <span class="toggle-icon">▼</span>
+                <span class="toggle-icon collapsed">▼</span>
                 <div>
                   <div class="client-card-title">${clientName}</div>
-                  <div class="client-card-meta">Status: <strong>${record.subtaskStatus}</strong> | Preparer: <strong>${record.reviewerTab || '-'}</strong></div>
+                  <div class="client-card-meta">Status: <strong>${record.subtaskStatus}</strong> | Reviewer: <strong>${record.reviewerTab || '-'}</strong></div>
                 </div>
               </div>
               <div class="client-card-stats">
                 <span>Total: ${docCount} docs | Pending: ${pending}</span>
               </div>
             </div>
-            <div class="client-card-body">
+            <div class="client-card-body collapsed">
               <ul class="documents-list">
         `;
         
