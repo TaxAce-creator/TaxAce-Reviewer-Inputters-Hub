@@ -583,7 +583,6 @@
     <div class="tabs">
       <button class="tab active" onclick="switchTab(event, 'overview')">📋 Overview</button>
       <button class="tab" onclick="switchTab(event, 'document-status')">📄 Document Status</button>
-      <button class="tab" onclick="switchTab(event, 'all-clients')">👥 All Clients</button>
       <button class="tab" onclick="switchTab(event, 'by-reviewer')">👨‍💼 By Reviewer</button>
       <button class="tab" onclick="switchTab(event, 'completed')">✅ Completed</button>
       <button class="tab" onclick="switchTab(event, 'glossary')">📖 Tax Term Reference</button>
@@ -610,18 +609,13 @@
         </div>
       </div>
 
-      <h3 style="margin-top: 28px; margin-bottom: 16px;">Recent Clients</h3>
+      <h3 style="margin-top: 28px; margin-bottom: 16px;">All Clients</h3>
       <div id="overviewTable"></div>
     </div>
 
     <!-- TAB 2: DOCUMENT STATUS -->
     <div id="document-status" class="tab-content">
       <div id="documentStatusContent"></div>
-    </div>
-
-    <!-- TAB 3: ALL CLIENTS -->
-    <div id="all-clients" class="tab-content">
-      <div id="allClientsContent"></div>
     </div>
 
     <!-- TAB 4: BY REVIEWER -->
@@ -759,7 +753,6 @@
     function renderAllTabs() {
       renderOverview();
       renderDocumentStatus();
-      renderAllClients();
       renderByReviewer();
       renderCompleted();
     }
@@ -777,17 +770,20 @@
       document.getElementById('withReviewer').textContent = stats.withReviewer;
       document.getElementById('totalPending').textContent = stats.pending;
 
-      let html = '<table><thead><tr><th>Client Name</th><th>Task Name</th><th>Subtask Name</th><th>Subtask Status</th><th>Reviewer</th><th>Pending Docs</th><th>Tax Year</th></tr></thead><tbody>';
+      let html = '<table><thead><tr><th>Client Name</th><th>Task Name</th><th>Subtask Name</th><th>Task Status</th><th>Subtask Status</th><th>Reviewer</th><th>Pending Docs</th><th>Tax Year</th><th>Return Type</th><th>Assignee</th></tr></thead><tbody>';
       
-      filteredData.slice(0, 10).forEach(r => {
+      filteredData.forEach(r => {
         html += `<tr>
           <td><strong>${r.clientName}</strong></td>
           <td>${r.taskName}</td>
           <td>${r.subtaskName || '-'}</td>
+          <td>${r.taskStatus}</td>
           <td>${r.subtaskStatus}</td>
           <td>${r.reviewerTab || '-'}</td>
           <td><span class="badge ${r.pendingDocumentCount > 0 ? 'badge-pending' : 'badge-uploaded'}">${r.pendingDocumentCount || 0}</span></td>
           <td>${r.taskTaxYear}</td>
+          <td>${r.taskReturnType}</td>
+          <td>${r.subtaskAssignee || '-'}</td>
         </tr>`;
       });
       
@@ -859,28 +855,6 @@
       
       bodyElement.classList.toggle('collapsed');
       toggleIcon.classList.toggle('collapsed');
-    }
-
-    function renderAllClients() {
-      let html = '<table><thead><tr><th>Client Name</th><th>Task Name</th><th>Subtask Name</th><th>Task Status</th><th>Subtask Status</th><th>Tax Year</th><th>Return Type</th><th>Reviewer</th><th>Pending Docs</th><th>Assignee</th></tr></thead><tbody>';
-      
-      filteredData.forEach(r => {
-        html += `<tr>
-          <td><strong>${r.clientName}</strong></td>
-          <td>${r.taskName}</td>
-          <td>${r.subtaskName || '-'}</td>
-          <td>${r.taskStatus}</td>
-          <td>${r.subtaskStatus}</td>
-          <td>${r.taskTaxYear}</td>
-          <td>${r.taskReturnType}</td>
-          <td>${r.reviewerTab || '-'}</td>
-          <td><span class="badge ${r.pendingDocumentCount > 0 ? 'badge-pending' : 'badge-uploaded'}">${r.pendingDocumentCount || 0}</span></td>
-          <td>${r.subtaskAssignee || '-'}</td>
-        </tr>`;
-      });
-      
-      html += '</tbody></table>';
-      document.getElementById('allClientsContent').innerHTML = html;
     }
 
     function renderByReviewer() {
