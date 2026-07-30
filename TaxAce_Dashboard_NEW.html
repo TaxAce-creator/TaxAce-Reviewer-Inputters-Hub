@@ -967,12 +967,29 @@
     let glossarySearchTerm = '';
     let pendingPhotoDataUrl = '';
 
+    const DEFAULT_GLOSSARY_TERMS = GLOSSARY_TERMS.slice(); // pristine categorized defaults, kept for migrating old saved data
+
     async function loadGlossaryState(){
       try{
         const raw = localStorage.getItem('taxace-dashboard-glossary');
         if(raw){
           const parsed = JSON.parse(raw);
-          if(Array.isArray(parsed) && parsed.length) GLOSSARY_TERMS = parsed;
+          if(Array.isArray(parsed) && parsed.length){
+            // Backfill categories for anything saved before categories existed —
+            // otherwise old saved data silently overwrites the categorized
+            // defaults and every term falls back to "Other".
+            const defaultsByName = {};
+            DEFAULT_GLOSSARY_TERMS.forEach(function(d){ defaultsByName[d.term] = d.category; });
+            let migrated = false;
+            parsed.forEach(function(t){
+              if(!t.category){
+                t.category = defaultsByName[t.term] || 'Other';
+                migrated = true;
+              }
+            });
+            GLOSSARY_TERMS = parsed;
+            if(migrated) saveGlossaryState();
+          }
         }
       }catch(e){ console.error('Could not load saved glossary', e); }
     }
