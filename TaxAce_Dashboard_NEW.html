@@ -81,6 +81,15 @@
     }
     .sheet-link-btn:hover { opacity: 0.85; }
 
+    .back-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 7px 12px; border-radius: 6px; border: 1px solid var(--line);
+      background: var(--paper-raised); color: var(--ink-soft);
+      font-size: 12px; font-weight: 600; text-decoration: none; cursor: pointer;
+      transition: all .15s ease; white-space: nowrap;
+    }
+    .back-btn:hover { border-color: var(--ink-soft); color: var(--ink); }
+
     .container {
       max-width: 1400px;
       margin: 0 auto;
@@ -386,6 +395,40 @@
       color: var(--red);
     }
 
+    .client-card-header {
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.2s ease;
+    }
+
+    .client-card-header:hover {
+      opacity: 0.85;
+    }
+
+    .toggle-icon {
+      display: inline-block;
+      width: 20px;
+      text-align: center;
+      font-size: 16px;
+      margin-right: 10px;
+      transition: transform 0.3s ease;
+    }
+
+    .toggle-icon.collapsed {
+      transform: rotate(-90deg);
+    }
+
+    .client-card-body {
+      max-height: 1000px;
+      overflow: hidden;
+      transition: max-height 0.3s ease-in-out;
+    }
+
+    .client-card-body.collapsed {
+      max-height: 0;
+      overflow: hidden;
+    }
+
     .doc-status-pending {
       background: var(--amber-bg);
       color: var(--amber);
@@ -508,6 +551,7 @@
     <!-- HEADER -->
     <div class="header">
       <div class="header-left">
+        <a href="index.html" class="back-btn">← Hub</a>
         <div class="logo">📊</div>
         <div>
           <div class="title">TaxAce Reviewers Dashboard</div>
@@ -541,7 +585,6 @@
       <button class="tab" onclick="switchTab(event, 'document-status')">📄 Document Status</button>
       <button class="tab" onclick="switchTab(event, 'all-clients')">👥 All Clients</button>
       <button class="tab" onclick="switchTab(event, 'by-reviewer')">👨‍💼 By Reviewer</button>
-      <button class="tab" onclick="switchTab(event, 'pending')">⏳ Pending</button>
       <button class="tab" onclick="switchTab(event, 'completed')">✅ Completed</button>
       <button class="tab" onclick="switchTab(event, 'glossary')">📖 Tax Term Reference</button>
     </div>
@@ -586,11 +629,6 @@
       <div id="byReviewerContent"></div>
     </div>
 
-    <!-- TAB 5: PENDING -->
-    <div id="pending" class="tab-content">
-      <div id="pendingContent"></div>
-    </div>
-
     <!-- TAB 6: COMPLETED -->
     <div id="completed" class="tab-content">
       <div id="completedContent"></div>
@@ -633,7 +671,7 @@
 
   <script>
     // ========== CONFIGURATION ==========
-    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzvV70L8pvG3j2s-DL46nsbKQ_BrEYBDd9pDZ5bASwgjWHCdLWQHdV3-3IEUaBtVymIGg/exec';
+    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyr3iisUbys46lwsuCggHKxod8NmrVCDTikMBZR-UeFQoID2gug3HIXbjaBOFZyWYdm/exec';
     let allData = [];
     let filteredData = [];
 
@@ -723,7 +761,6 @@
       renderDocumentStatus();
       renderAllClients();
       renderByReviewer();
-      renderPending();
       renderCompleted();
     }
 
@@ -767,17 +804,22 @@
       });
 
       let html = '';
+      let cardIndex = 0;
       clientMap.forEach((record, clientName) => {
         const pending = record.pendingDocumentCount || 0;
+        const docCount = record.documentCount || 0;
         html += `
           <div class="client-card">
-            <div class="client-card-header">
-              <div>
-                <div class="client-card-title">${clientName}</div>
-                <div class="client-card-meta">Status: <strong>${record.subtaskStatus}</strong> | Preparer: <strong>${record.reviewerTab || '-'}</strong></div>
+            <div class="client-card-header" onclick="toggleDocuments(this)">
+              <div style="display: flex; align-items: center; flex: 1;">
+                <span class="toggle-icon">▼</span>
+                <div>
+                  <div class="client-card-title">${clientName}</div>
+                  <div class="client-card-meta">Status: <strong>${record.subtaskStatus}</strong> | Preparer: <strong>${record.reviewerTab || '-'}</strong></div>
+                </div>
               </div>
               <div class="client-card-stats">
-                <span>Total: ${record.documentCount || 0} docs | Pending: ${pending}</span>
+                <span>Total: ${docCount} docs | Pending: ${pending}</span>
               </div>
             </div>
             <div class="client-card-body">
@@ -800,12 +842,23 @@
             
             html += `<li><span class="doc-name">${doc.name}</span><span class="doc-status-badge ${statusClass}">${statusText}</span></li>`;
           });
+        } else {
+          html += `<li style="padding: 12px 16px; color: var(--slate); font-style: italic;">No documents added</li>`;
         }
         
         html += `</ul></div></div>`;
+        cardIndex++;
       });
 
       document.getElementById('documentStatusContent').innerHTML = html || '<div class="empty-state">No data found</div>';
+    }
+
+    function toggleDocuments(headerElement) {
+      const bodyElement = headerElement.nextElementSibling;
+      const toggleIcon = headerElement.querySelector('.toggle-icon');
+      
+      bodyElement.classList.toggle('collapsed');
+      toggleIcon.classList.toggle('collapsed');
     }
 
     function renderAllClients() {
@@ -841,7 +894,7 @@
       let html = '';
       reviewers.forEach((records, reviewer) => {
         html += `<h3 style="margin-top: 28px; margin-bottom: 16px;">${reviewer} (${records.length} records)</h3>`;
-        html += '<table><thead><tr><th>Client Name</th><th>Task Name</th><th>Subtask Name</th><th>Subtask Status</th><th>Pending Docs</th><th>Date Reviewed</th><th>Return Type</th></tr></thead><tbody>';
+        html += '<table><thead><tr><th>Client Name</th><th>Task Name</th><th>Subtask Name</th><th>Subtask Status</th><th>Pending Docs</th><th>Subtask Due Date</th><th>Return Type</th></tr></thead><tbody>';
         
         records.forEach(r => {
           html += `<tr>
@@ -850,7 +903,7 @@
             <td>${r.subtaskName || '-'}</td>
             <td>${r.subtaskStatus}</td>
             <td><span class="badge ${r.pendingDocumentCount > 0 ? 'badge-pending' : 'badge-uploaded'}">${r.pendingDocumentCount || 0}</span></td>
-            <td>${r.dateReviewed || '-'}</td>
+            <td>${r.subtaskDueDate || '-'}</td>
             <td>${r.taskReturnType}</td>
           </tr>`;
         });
@@ -861,27 +914,6 @@
       document.getElementById('byReviewerContent').innerHTML = html;
     }
 
-    function renderPending() {
-      const pending = filteredData.filter(r => r.pendingDocumentCount > 0);
-      let html = `<h3 style="margin-bottom: 16px;">Pending Review (${pending.length} items)</h3>`;
-      html += '<table><thead><tr><th>Client Name</th><th>Task Name</th><th>Subtask Name</th><th>Subtask Status</th><th>Pending Docs</th><th>Reviewer</th><th>Date Requested</th><th>Tax Year</th></tr></thead><tbody>';
-      
-      pending.forEach(r => {
-        html += `<tr>
-          <td><strong>${r.clientName}</strong></td>
-          <td>${r.taskName}</td>
-          <td>${r.subtaskName || '-'}</td>
-          <td>${r.subtaskStatus}</td>
-          <td><span class="badge badge-pending">${r.pendingDocumentCount}</span></td>
-          <td>${r.reviewerTab || '-'}</td>
-          <td>${r.dateRequested || '-'}</td>
-          <td>${r.taskTaxYear}</td>
-        </tr>`;
-      });
-      
-      html += '</tbody></table>';
-      document.getElementById('pendingContent').innerHTML = html || '<div class="empty-state">No pending items</div>';
-    }
 
     function renderCompleted() {
       const completed = filteredData.filter(r => r.isCompleted === true);
