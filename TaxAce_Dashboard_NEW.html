@@ -395,6 +395,32 @@
       color: var(--red);
     }
 
+    .doc-status-updated {
+      background: var(--blue-bg);
+      color: var(--blue);
+    }
+
+    .doc-status-resolved {
+      background: var(--green-bg);
+      color: var(--green);
+    }
+
+    .doc-status-requested {
+      background: var(--amber-bg);
+      color: var(--amber);
+    }
+
+    .doc-status-select {
+      margin-left: auto;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      border: 1px solid var(--line);
+      cursor: pointer;
+    }
+
     .client-card-header {
       cursor: pointer;
       user-select: none;
@@ -568,6 +594,16 @@
     }
     .photo-btn:hover { border-color: var(--blue); color: var(--blue); background: var(--paper-raised); }
     .photo-remove-btn:hover { border-color: var(--red); color: var(--red); background: var(--paper-raised); }
+    .term-guide-actions { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; align-items: center; }
+    .guide-link-btn, .guide-add-btn, .guide-edit-btn, .guide-remove-btn {
+      padding: 6px 10px; font-size: 12px; font-weight: 500; border-radius: 5px; cursor: pointer;
+      border: 1px solid var(--line); background: var(--paper-raised); color: var(--ink-soft);
+      transition: all .15s ease; text-decoration: none; display: inline-block;
+    }
+    .guide-link-btn { border-color: var(--blue); color: var(--blue); }
+    .guide-link-btn:hover { background: var(--blue); color: white; }
+    .guide-add-btn:hover, .guide-edit-btn:hover { border-color: var(--blue); color: var(--blue); background: var(--paper-raised); }
+    .guide-remove-btn:hover { border-color: var(--red); color: var(--red); background: var(--paper-raised); }
   </style>
 </head>
 <body>
@@ -595,7 +631,10 @@
           <option value="Dani">Dani</option>
         </select>
         <select id="subtaskFilter">
-          <option value="">All Subtasks</option>
+          <option value="">All Subtask Name</option>
+        </select>
+        <select id="subtaskStatusFilter">
+          <option value="">All Subtask Statuses</option>
         </select>
         <button onclick="refreshData()">🔄 Refresh</button>
         <a href="https://docs.google.com/spreadsheets/d/1C5DzuHvKfursdBp_KVZ_4af2Ym7Oef7BAlQ8kqx5OGg/edit?gid=2126218207#gid=2126218207" target="_blank" rel="noopener" class="sheet-link-btn">📊 Open Spreadsheet</a>
@@ -605,15 +644,15 @@
 
     <!-- TABS -->
     <div class="tabs">
-      <button class="tab active" onclick="switchTab(event, 'overview')">📋 Overview</button>
-      <button class="tab" onclick="switchTab(event, 'document-status')">📄 Document Status</button>
+      <button class="tab active" onclick="switchTab(event, 'document-status')">📄 Document Status Monitoring</button>
+      <button class="tab" onclick="switchTab(event, 'overview')">📋 Canopy View</button>
       <button class="tab" onclick="switchTab(event, 'by-reviewer')">👨‍💼 By Reviewer</button>
       <button class="tab" onclick="switchTab(event, 'completed')">✅ Completed</button>
       <button class="tab" onclick="switchTab(event, 'glossary')">📖 Tax Term Reference</button>
     </div>
 
-    <!-- TAB 1: OVERVIEW -->
-    <div id="overview" class="tab-content active">
+    <!-- TAB 2: OVERVIEW / CANOPY VIEW -->
+    <div id="overview" class="tab-content">
       <div class="stats-grid">
         <div class="stat-card">
           <div class="stat-label">Total Records</div>
@@ -637,8 +676,8 @@
       <div id="overviewTable"></div>
     </div>
 
-    <!-- TAB 2: DOCUMENT STATUS -->
-    <div id="document-status" class="tab-content">
+    <!-- TAB 1: DOCUMENT STATUS MONITORING -->
+    <div id="document-status" class="tab-content active">
       <div id="documentStatusContent"></div>
     </div>
 
@@ -697,6 +736,9 @@
         <input type="file" id="newTermPhoto" accept="image/*">
         <img id="photoPreview" class="photo-preview">
 
+        <label>Video / Guide Link (optional — Scribe, Loom, YouTube, etc.)</label>
+        <input type="text" id="newTermGuideLink" placeholder="https://scribehow.com/shared/...">
+
         <div class="add-term-actions">
           <button onclick="saveNewTerm()">Save Term</button>
           <button class="btn-secondary" onclick="cancelAddTerm()">Cancel</button>
@@ -719,13 +761,45 @@
     const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyr3iisUbys46lwsuCggHKxod8NmrVCDTikMBZR-UeFQoID2gug3HIXbjaBOFZyWYdm/exec';
     let allData = [];
     let filteredData = [];
+    let documentStatusOverrides = {}; // local edits to individual document status, survive re-sync (live data has no permanent doc id)
+    const DOC_STATUS_OPTIONS = ['Uploaded', 'Not Uploaded', 'Updated', 'Resolved', 'Requested/Follow-up'];
+
+    function docStatusKey(clientName, docName){
+      return (clientName + '::' + docName).toLowerCase();
+    }
+    function loadDocumentStatusOverrides(){
+      try{
+        const raw = localStorage.getItem('taxace-doc-status-overrides');
+        if(raw) documentStatusOverrides = JSON.parse(raw) || {};
+      }catch(e){ console.error('Could not load document status overrides', e); }
+    }
+    function saveDocumentStatusOverrides(){
+      try{
+        localStorage.setItem('taxace-doc-status-overrides', JSON.stringify(documentStatusOverrides));
+        showSaveToast('✓ Saved', false);
+      }catch(e){
+        console.error('Could not save document status override', e);
+        showSaveToast('⚠ Not saved — check if private/incognito mode is blocking storage', true);
+      }
+    }
+    function docStatusClass(status){
+      const s = (status || '').toLowerCase();
+      if(s === 'uploaded') return 'doc-status-uploaded';
+      if(s === 'not uploaded') return 'doc-status-not-uploaded';
+      if(s === 'updated') return 'doc-status-updated';
+      if(s === 'resolved') return 'doc-status-resolved';
+      if(s === 'requested/follow-up') return 'doc-status-requested';
+      return 'doc-status-not-uploaded';
+    }
 
     // ========== INITIALIZE ==========
     document.addEventListener('DOMContentLoaded', function() {
+      loadDocumentStatusOverrides();
       refreshData();
       document.getElementById('searchInput').addEventListener('keyup', filterData);
       document.getElementById('reviewerFilter').addEventListener('change', filterData);
       document.getElementById('subtaskFilter').addEventListener('change', filterData);
+      document.getElementById('subtaskStatusFilter').addEventListener('change', filterData);
     });
 
     // ========== FETCH DATA ==========
@@ -742,6 +816,7 @@
           const count = data.count || 0;
           document.getElementById('recordCount').textContent = count;
           populateSubtaskFilter();
+          populateSubtaskStatusFilter();
           renderAllTabs();
           showSaveToast('✓ Refreshed — ' + count + ' records', false);
         })
@@ -760,15 +835,37 @@
       const searchTerm = document.getElementById('searchInput').value.toLowerCase();
       const reviewer = document.getElementById('reviewerFilter').value;
       const subtask = document.getElementById('subtaskFilter').value;
+      const subtaskStatus = document.getElementById('subtaskStatusFilter').value;
 
       filteredData = allData.filter(record => {
         const matchesSearch = !searchTerm || record.clientName.toLowerCase().includes(searchTerm);
         const matchesReviewer = !reviewer || record.reviewerTab === reviewer;
         const matchesSubtask = !subtask || (record.subtaskName && record.subtaskName.toLowerCase() === subtask.toLowerCase());
-        return matchesSearch && matchesReviewer && matchesSubtask;
+        const matchesSubtaskStatus = !subtaskStatus || (record.subtaskStatus && record.subtaskStatus.toLowerCase() === subtaskStatus.toLowerCase());
+        return matchesSearch && matchesReviewer && matchesSubtask && matchesSubtaskStatus;
       });
 
       renderAllTabs();
+    }
+
+    // ========== POPULATE SUBTASK STATUS FILTER ==========
+    function populateSubtaskStatusFilter() {
+      const statuses = [...new Set(allData
+        .filter(record => record.subtaskStatus && record.subtaskStatus.trim())
+        .map(record => record.subtaskStatus.trim()))].sort();
+
+      const select = document.getElementById('subtaskStatusFilter');
+      const currentValue = select.value;
+      select.innerHTML = '<option value="">All Subtask Statuses</option>';
+
+      statuses.forEach(status => {
+        const option = document.createElement('option');
+        option.value = status;
+        option.textContent = status;
+        select.appendChild(option);
+      });
+
+      if (statuses.includes(currentValue)) select.value = currentValue;
     }
 
     // ========== POPULATE SUBTASK FILTER ==========
@@ -780,7 +877,7 @@
 
       const select = document.getElementById('subtaskFilter');
       const currentValue = select.value;
-      select.innerHTML = '<option value="">All Subtasks</option>';
+      select.innerHTML = '<option value="">All Subtask Name</option>';
       
       subtaskNames.forEach(name => {
         const option = document.createElement('option');
@@ -875,19 +972,16 @@
         
         if (record.documents && record.documents.length > 0) {
           record.documents.forEach(doc => {
-            const docStatus = doc.status || 'Pending';
-            let statusClass = 'doc-status-pending';
-            let statusText = 'Pending';
-            
-            if (docStatus === 'Uploaded' || docStatus === 'UPLOADED') {
-              statusClass = 'doc-status-uploaded';
-              statusText = 'Uploaded';
-            } else if (docStatus === 'Not Uploaded' || docStatus === 'NOT UPLOADED') {
-              statusClass = 'doc-status-not-uploaded';
-              statusText = 'Not Uploaded';
-            }
-            
-            html += `<li><span class="doc-name">${doc.name}</span><span class="doc-status-badge ${statusClass}">${statusText}</span></li>`;
+            const key = docStatusKey(clientName, doc.name);
+            const effectiveStatus = documentStatusOverrides[key] || doc.status || 'Not Uploaded';
+            const optionsHtml = DOC_STATUS_OPTIONS.map(function(opt){
+              return '<option value="' + opt + '"' + (opt === effectiveStatus ? ' selected' : '') + '>' + opt + '</option>';
+            }).join('');
+            html += `<li><span class="doc-name">${doc.name}</span>
+              <select class="doc-status-badge doc-status-select ${docStatusClass(effectiveStatus)}"
+                data-client="${clientName.replace(/"/g,'&quot;')}" data-doc="${doc.name.replace(/"/g,'&quot;')}"
+                onchange="updateDocumentStatus(this)">${optionsHtml}</select>
+            </li>`;
           });
         } else {
           html += `<li style="padding: 12px 16px; color: var(--slate); font-style: italic;">No documents added</li>`;
@@ -898,6 +992,17 @@
       });
 
       document.getElementById('documentStatusContent').innerHTML = html || '<div class="empty-state">No data found</div>';
+    }
+
+    function updateDocumentStatus(selectEl){
+      const clientName = selectEl.dataset.client;
+      const docName = selectEl.dataset.doc;
+      const newStatus = selectEl.value;
+      const key = docStatusKey(clientName, docName);
+      documentStatusOverrides[key] = newStatus;
+      saveDocumentStatusOverrides();
+      // update the select's own color immediately without a full re-render
+      selectEl.className = 'doc-status-badge doc-status-select ' + docStatusClass(newStatus);
     }
 
     function toggleDocuments(headerElement) {
@@ -963,7 +1068,7 @@
     }
 
     // ========== TAX TERM REFERENCE (GLOSSARY) ==========
-    let GLOSSARY_TERMS = [{"term": "Code DD", "details": ["Cost of employer-sponsored health coverage", "Not taxable", "total cost of your health insurance for the year", "what you paid + what your employer paid", "Not taxable", "For information only (required by the Affordable Care Act)"], "category": "Health Coverage & Insurance"}, {"term": "1095-B", "details": ["\u2192 From insurers or small employers (fully insured plans)", "Report coverage on the CA return"], "category": "Health Coverage & Insurance"}, {"term": "1095-C", "details": ["\u2192 From large employers (ALEs, 50+ employees)", "Report coverage on the CA return"], "category": "Health Coverage & Insurance"}, {"term": "$300 per educator", "details": ["($600 married filing jointly if both spouses qualify)"], "category": "Education"}, {"term": "1098E (Student Loan)", "details": ["only deductible by the person who is legally obligated on the loan", "parents cannot take the student loan interest deduction, if name in form is the dependent"], "category": "Education"}, {"term": "State filing", "details": ["client is required to file a state return", "Client\u2019s residency", "Source of income"], "category": "Filing Status & Residency"}, {"term": "DPO", "details": ["Designated Payee / Designated Paid Organizer address", "address of the person or firm that is allowed to receive certain IRS or state refund-related mail"], "category": "Filing Status & Residency"}, {"term": "Form 5498", "details": ["informational only", "Verifying IRA/HSA contributions", "Reconciling excess contributions", "Tracking basis (Form 8606)", "Confirming HSA funding"], "category": "Retirement & Investments"}, {"term": "Solo 401(k)", "details": ["Plan provider (Fidelity, Vanguard, Schwab, Guideline, etc.)", "Ask for separate amounts: Amount contributed as employee and employer", "Schedule C: Final net profit", "Pension and Profit-Sharing Plans", "Employee: up to $23,000 (2024; $30,500 if 50+)", "Employer: ~20% of adjusted net SE income", "S-Corp: Employer contribution amount and shown on W-2 (Box 12, code D or AA)"], "category": "Retirement & Investments"}, {"term": "1099NEC", "details": ["input the 1099-NEC, even if the recipient name is the individual\u2019s business name"], "category": "Income & 1099 Documents"}, {"term": "Business vehicles", "details": ["reported on Form 4797, depreciation"], "category": "Business & Self-Employment"}, {"term": "Scorp receive a 1099K", "details": ["Form 1120-S as part of gross receipt"], "category": "Business & Self-Employment"}, {"term": "Internship income", "details": ["Report on Schedule C (individual return)", "Deduct any related expenses (mileage, supplies, etc.)", "No extra documents required beyond the 109", "Activity: Internship / Contract Services"], "category": "Income & 1099 Documents"}, {"term": "Alimony (Received)", "details": ["Divorce finalized BEFORE 1/1/2019", "Alimony is taxable income", "Federal \u2192 Income \u2192 Other Income \u2192 Alimony received", "finalized ON or AFTER 1/1/2019", "Alimony is NOT taxable"], "category": "Dependents & Family"}, {"term": "Alimony (Paid)", "details": ["Divorce finalized BEFORE 1/1/2019", "Alimony is deductible", "Federal \u2192 Adjustments to Income \u2192 Alimony paid and Recepient SSN", "finalized ON or AFTER 1/1/2019", "Not deductible \u2014 do not enter"], "category": "Dependents & Family"}, {"term": "Adoption", "details": ["entered for the Adoption Credit (Form 8839)", "Federal \u2192 Credits \u2192 Adoption Credit (Form 8839)", "Adoption agency fees", "Attorney fees", "Court costs", "Travel (meals & lodging while away from home)", "Other directly related adoption expenses"], "category": "Dependents & Family"}, {"term": "Spouse died", "details": ["considered married for the entire tax year"], "category": "Filing Status & Residency"}, {"term": "Real Estate Tax", "details": ["also called Property Tax", "primary residence", "rental property"], "category": "Deductions & Credits"}, {"term": "Personal Property Tax", "details": ["assessed on movable property", "Vehicles", "Boats", "Business equipment"], "category": "Deductions & Credits"}, {"term": "1095-C", "details": ["employer-sponsored health coverage", "Applicable Large Employers (ALEs)", "health insurance coverage the employer offered", "Employee\u2019s share of premiums", "Sent to employees (even if they declined coverage)"], "category": "Health Coverage & Insurance"}, {"term": "1095-B", "details": ["Insurance companies (for fully insured plans)", "Small employers that are not ALEs", "Government programs (like Medicaid)", "Reports actual coverage enrollment"], "category": "Health Coverage & Insurance"}, {"term": "Medicare", "details": ["receive Form 1095-B from Medicare (CMS)"], "category": "Health Coverage & Insurance"}, {"term": "Live-in provider for IHSS", "details": ["In-Home Supportive Services", "excluded from federal income tax", "providing care to that individual", "excluded from(CA)  state income tax", "W2: Box 1 (Federal) and Box 16 (CA) can show $0 for IHSS wages", "total non-taxable wages are usually shown in Box 12 with Code II"], "category": "Income & 1099 Documents"}, {"term": "1099DIV for trust account", "details": ["trust\u2019s name and EIN: It belongs on the trust return (Form 1041)", "client\u2019s SSN is on the 1099-DIV: reported on the client\u2019s 1040"], "category": "Trusts & Estates"}, {"term": "Code II in Box 12-W2", "details": ["income may be excludable from federal taxable income", "Social Security & Medicare wages reported"], "category": "Income & 1099 Documents"}, {"term": "AOTC Eligibility", "details": ["American Opportunity Tax Credit (AOTC)", "Up to $2,500 per eligible student", "100% of the first $2,000 of qualified education expenses", "25% of the next $2,000", "Up to $1,000 refundable (even if no tax is owed)"], "category": "Education"}, {"term": "1098T", "details": ["Box 1: Payments received for qualified tuition and related expenses", "Box 5: Scholarships or grants", "credit phases out if Modified Adjusted Gross Income (MAGI):", "Single: $80,000\u2013$90,000", "Married Filing Jointly: $160,000\u2013$180,000"], "category": "Education"}, {"term": "LLC Type", "details": ["Single Member: LLC", "Multi-Member: 1065", "LLC taxed as S-Corp: 1120S", "LLC taxed as C-Corp: 1120"], "category": "Business & Self-Employment"}, {"term": "Car Donation", "details": ["1098-C (required for vehicle donations over $500)", "Enter Charitable Contributions (Schedule A)"], "category": "Deductions & Credits"}, {"term": "Asset Entry", "details": ["Asset Entry Worksheet", "if more than 2,500 amount", "under $2,500, you can use the De Minimis Safe Harbor and expense it in the current year"], "category": "Business & Self-Employment"}, {"term": "HOH Status", "details": ["Dependent must lived with the taxpayer more than half the year", "qualifying child or qualifying relative", "Education expenses (like tuition) if student is the taxpayer"], "category": "Dependents & Family"}, {"term": "1099INT is under Trust", "details": ["1099-INT shows the taxpayer\u2019s SSN", "Enter the 1099-INT on the individual return (Form 1040)"], "category": "Trusts & Estates"}, {"term": "CRUT", "details": ["Charitable Remainder Unitrust", "trust that pays them income", "managed by U.S. Bank.", "trust issues a Schedule K-1"], "category": "Trusts & Estates"}, {"term": "Wordwide income", "details": ["rental income must be reported", "need to claim a Foreign Tax Credit (Form 1116)", "This prevents double taxation"], "category": "Filing Status & Residency"}, {"term": "MSRRA", "details": ["protect Employee wages"], "category": "Filing Status & Residency"}, {"term": "Medical & Dental Copays", "details": ["copays are deductible medical expenses", "doctor visits, prescriptions, and dental appointments", "only the portion of total medical expenses that exceeds 7.5% AGI", "example her AGI is $80,000", "7.5% = $6,000", "Only medical expenses above $6,000 would be deductible", "Medical expenses are deductible only if the client itemizes deductions", "only the amount over 7.5% of Adjusted Gross Income (AGI) counts", "qualified medical expenses (Schedule A)", "Doctor/medical visits (\u201cMedical\u201d)", "Dental expenses", "Prescription medications (e.g., Kaiser pharmacy)", "Payments to healthcare providers (like Kaiser)", "HSA-eligible items (if not reimbursed)"], "category": "Deductions & Credits"}, {"term": "Property switch", "details": ["Prorated income/expenses"], "category": "Deductions & Credits"}, {"term": "AOC", "details": ["American Opportunity Credit", "Up to $2,500 per eligible student", "First 4 years of undergraduate education", "40% refundable (up to $1,000)"], "category": "Education"}, {"term": "LLC", "details": ["Lifetime Learning Credit", "Up to $2,000 per return", "Unlimited years and non-refundable"], "category": "Education"}, {"term": "1099Q", "details": ["529 plan (Qualified Tuition Program)", "Coverdell ESA", "Qualified expenses for 529 plans include", "Tuition", "Books", "Equipment"], "category": "Education"}, {"term": "Contract labor", "details": ["1099-NEC is not required unless payments were $600 or more"], "category": "Income & 1099 Documents"}, {"term": "SCRA", "details": ["Servicemembers Civil Relief Act", "Active-duty military members do not become California residents", "maintains Texas residency, he is not subject to California income tax", "oes not need to file a California resident return"], "category": "Filing Status & Residency"}, {"term": "CAUTMA", "details": ["California Uniform Transfers to Minors Act account", "the minor (child) is the taxpayer", "the parent can elect to report the child\u2019s investment income", "Child is under age 19 (or under 24 and full-time student)", "Only interest/dividends (no capital gains from selling investments)", "Total investment income below the IRS threshold (around $11k+ range depending on year)"], "category": "Dependents & Family"}, {"term": "W-2G", "details": ["obtain it directly from the gambling operator", "win/loss statement is typically used only as supporting documentation for gambling losses", "does not replace the W-2G for reporting gambling winnings", "$1,200+ from slots or bingo", "$1,500+ from keno", "$5,000+ from poker tournaments", "$600+ for other wagers if payout is 300\u00d7 the wager"], "category": "Other"}, {"term": "UBIA", "details": ["Unadjusted Basis Immediately After Acquisition", "Tangible business property (equipment, buildings, machinery, etc.)", "Used in a trade or business", "Depreciable", "used to determine limits on the QBI deduction when income is above"], "category": "Business & Self-Employment"}, {"term": "Donations", "details": ["Deductible up to 60% of your Adjusted Gross Income (AGI)", "Example- AGI: $100,000", "Max deductible donation: $60,000", "Excess donations can also be carried forward for 5 years", "donation \u2265 $250 \u2192 written acknowledgment required", "property donation > $500 \u2192 file Form 8283", "property > $5,000 \u2192 qualified appraisal required"], "category": "Deductions & Credits"}, {"term": "Annual Gift", "details": ["United States Gift (and Generation-Skipping Transfer) Tax Return", "Annual gift exclusion \u2248 $18,000 per recipient", "file IRS Form 709", "reduces her lifetime estate and gift exemption (currently about $13M+)"], "category": "Deductions & Credits"}, {"term": "Donation without receipts", "details": ["$250 or More (Per Donation) -Need ritten acknowledgment from Goodwill", "under $500 total, he does not need a formal receipt \u2014 but he must have records", "over $5,000, a qualified appraisal is required"], "category": "Deductions & Credits"}, {"term": "FSA contributions", "details": ["reduce Box 1 wages on the W-2", "shown in Box 14 or Box 12 (code W for HSA only)", "Medical expenses reimbursed by FSA cannot be deducted on Schedule A", "unreimbursed expenses exceeding 7.5% of AGI can be deductible"], "category": "Health Coverage & Insurance"}, {"term": "FSA vs HSA", "details": ["Flexible Spending Account (FSA)", "Funded through payroll deductions", "Contributions are already pre-tax on the W-2", "No separate tax forms are issued for filing", "reflected in Box 14 or payroll deductions on their W-2", "HSA (Health Savings Account)", "paired with a High Deductible Health Plan (HDHP)", "reported on Form 5498-SA and Form 1099-SA"], "category": "Health Coverage & Insurance"}, {"term": "C-Corp vs S-Corp", "details": ["S-Corp (S corporation) is not a business entity type", "a tax election a corporation (or LLC) can file with the Internal Revenue Service using Form 2553", "C Corporation \u2192 default if no tax election was mad", "S Corporation \u2192 if the company filed an S-Corp election with the IRS"], "category": "Business & Self-Employment"}, {"term": "Medicare vs. Public Exchange", "details": ["public exchange refers to the Health Insurance Marketplace created under the Affordable Care Act", "Plans purchased there generate Form 1095-A", "form reports premium tax credits for ACA marketplace plans", "enrolled in Medicare generally cannot receive ACA premium tax credits", "Form 1095-B \u2013 shows minimum essential coverage", "Form 1095-C \u2013 only if an employer plan is involved"], "category": "Health Coverage & Insurance"}, {"term": "Child support", "details": ["Child support received \u2192 Not taxable income", "Child support paid \u2192 Not deductible", "enter dependents, custody, or childcare expenses related to the child", "affects:", "Child Tax Credit", "Earned Income Credit", "Filing status (Head of Household)"], "category": "Dependents & Family"}, {"term": "Property damage", "details": ["only deductible if it is due to a federally declared disaster", "Examples that may qualify:", "Hurricane", "Flood", "Wildfire", "Earthquake", "Other disasters declared by the federal government", "However, if the property is:", "Rental property", "Business property", "Then the loss can still be deductible regardless of disaster status."], "category": "Deductions & Credits"}, {"term": "childcare expense", "details": ["amounts you paid to your daughter\u2019s school for after-school care services", "made for supervision and care while parents were working", "not for for regular school tuition", "not for primarily academic tutoring", "not for extracurricular lessons (music, sports, etc.)"], "category": "Dependents & Family"}, {"term": "Sport camps", "details": ["qualify for the Child and Dependent Care Credit", "only if the child is under age 13 at the time of care", "It\u2019s a day camp (not overnight)"], "category": "Dependents & Family"}, {"term": "1099-B", "details": ["generated if there were reportable sales or redemptions of securities", "No sales of stocks, ETFs, mutual funds, or bond", "No option transactions that closed", "All activity was inside a retirement account (IRA, 401(k), etc.)"], "category": "Income & 1099 Documents"}, {"term": "Ceritification related to job", "details": ["qualifies as deductible work-related education"], "category": "Education"}, {"term": "IRS estimated tax", "details": ["1040ES (for 1040, 1040A, 1040EZ)"], "category": "Filing Status & Residency"}, {"term": "MA Rent Deduction", "details": ["renters may deduct 50% of the rent paid", "up to a maximum deduction of $4,000 per return", "Not be claiming rent for a property they own"], "category": "Deductions & Credits"}, {"term": "Head of Household (HOH)", "details": ["dependent (his mother) qualifies (lived with him, support test, etc.)", "Qualifying Relative (not a child)", "parent is physically or mentally incapable of self-care"], "category": "Dependents & Family"}, {"term": "GST non-exempt trust return", "details": ["Not a fully exempt trust (no automatic exemption allocation)", "Trust type (revocable, irrevocable, dynasty, etc.)", "Date of creation (important for GST grandfathering rules)", "Transfers to skip persons (e.g., grandchildren)", "Distributions from trust to skip persons", "When a non-skip interest ends and only skip persons remain"], "category": "Trusts & Estates"}, {"term": "GI Bill (Chapter 33)", "details": ["Tuition and fees", "Housing allowance", "Books and supplies", "GI Bill benefits = tax-free"], "category": "Education"}, {"term": "MED & DEN", "details": ["(Medical & Dental)", "W-2 Box 14", "Other (not classified)", "reflects after-tax or pre-tax payroll deductions for health coverage"], "category": "Health Coverage & Insurance"}, {"term": "W-2G", "details": ["W-2G reporting thresholds include:", "$1,200+ from slots or bingo", "$1,500+ from keno", "$5,000+ from poker tournaments", "$600+ for other wagers if payout is 300\u00d7 the wager", "Casinos issue a W-2G only when a single qualifying win occurs"], "category": "Other"}, {"term": "1099-Rs for Pension", "details": ["DFAS or RAS", "mark the amount estimated"], "category": "Retirement & Investments"}];
+    let GLOSSARY_TERMS = [{"term": "Schedule E - Rental Income & Expense", "category": "Income & 1099 Documents", "details": ["Reports rental real estate, royalties, partnerships, S-corps, estates, and trusts", "Common deductible expenses: mortgage interest, property tax, insurance, repairs, management fees, utilities", "Depreciation: residential rental property depreciated over 27.5 years", "Special $25,000 loss allowance for active participation, phases out between $100k-$150k MAGI", "Rental losses generally limited by passive activity rules unless taxpayer qualifies as a real estate professional", "Keep records of days rented vs. personal use if the property is also used personally"]}, {"term": "Code DD", "details": ["Cost of employer-sponsored health coverage", "Not taxable", "total cost of your health insurance for the year", "what you paid + what your employer paid", "Not taxable", "For information only (required by the Affordable Care Act)"], "category": "Health Coverage & Insurance"}, {"term": "1095-B", "details": ["\u2192 From insurers or small employers (fully insured plans)", "Report coverage on the CA return"], "category": "Health Coverage & Insurance"}, {"term": "1095-C", "details": ["\u2192 From large employers (ALEs, 50+ employees)", "Report coverage on the CA return"], "category": "Health Coverage & Insurance"}, {"term": "$300 per educator", "details": ["($600 married filing jointly if both spouses qualify)"], "category": "Education"}, {"term": "1098E (Student Loan)", "details": ["only deductible by the person who is legally obligated on the loan", "parents cannot take the student loan interest deduction, if name in form is the dependent"], "category": "Education"}, {"term": "State filing", "details": ["client is required to file a state return", "Client\u2019s residency", "Source of income"], "category": "Filing Status & Residency"}, {"term": "DPO", "details": ["Designated Payee / Designated Paid Organizer address", "address of the person or firm that is allowed to receive certain IRS or state refund-related mail"], "category": "Filing Status & Residency"}, {"term": "Form 5498", "details": ["informational only", "Verifying IRA/HSA contributions", "Reconciling excess contributions", "Tracking basis (Form 8606)", "Confirming HSA funding"], "category": "Retirement & Investments"}, {"term": "Solo 401(k)", "details": ["Plan provider (Fidelity, Vanguard, Schwab, Guideline, etc.)", "Ask for separate amounts: Amount contributed as employee and employer", "Schedule C: Final net profit", "Pension and Profit-Sharing Plans", "Employee: up to $23,000 (2024; $30,500 if 50+)", "Employer: ~20% of adjusted net SE income", "S-Corp: Employer contribution amount and shown on W-2 (Box 12, code D or AA)"], "category": "Retirement & Investments"}, {"term": "1099NEC", "details": ["input the 1099-NEC, even if the recipient name is the individual\u2019s business name"], "category": "Income & 1099 Documents"}, {"term": "Business vehicles", "details": ["reported on Form 4797, depreciation"], "category": "Business & Self-Employment"}, {"term": "Scorp receive a 1099K", "details": ["Form 1120-S as part of gross receipt"], "category": "Business & Self-Employment"}, {"term": "Internship income", "details": ["Report on Schedule C (individual return)", "Deduct any related expenses (mileage, supplies, etc.)", "No extra documents required beyond the 109", "Activity: Internship / Contract Services"], "category": "Income & 1099 Documents"}, {"term": "Alimony (Received)", "details": ["Divorce finalized BEFORE 1/1/2019", "Alimony is taxable income", "Federal \u2192 Income \u2192 Other Income \u2192 Alimony received", "finalized ON or AFTER 1/1/2019", "Alimony is NOT taxable"], "category": "Dependents & Family"}, {"term": "Alimony (Paid)", "details": ["Divorce finalized BEFORE 1/1/2019", "Alimony is deductible", "Federal \u2192 Adjustments to Income \u2192 Alimony paid and Recepient SSN", "finalized ON or AFTER 1/1/2019", "Not deductible \u2014 do not enter"], "category": "Dependents & Family"}, {"term": "Adoption", "details": ["entered for the Adoption Credit (Form 8839)", "Federal \u2192 Credits \u2192 Adoption Credit (Form 8839)", "Adoption agency fees", "Attorney fees", "Court costs", "Travel (meals & lodging while away from home)", "Other directly related adoption expenses"], "category": "Dependents & Family"}, {"term": "Spouse died", "details": ["considered married for the entire tax year"], "category": "Filing Status & Residency"}, {"term": "Real Estate Tax", "details": ["also called Property Tax", "primary residence", "rental property"], "category": "Deductions & Credits"}, {"term": "Personal Property Tax", "details": ["assessed on movable property", "Vehicles", "Boats", "Business equipment"], "category": "Deductions & Credits"}, {"term": "1095-C", "details": ["employer-sponsored health coverage", "Applicable Large Employers (ALEs)", "health insurance coverage the employer offered", "Employee\u2019s share of premiums", "Sent to employees (even if they declined coverage)"], "category": "Health Coverage & Insurance"}, {"term": "1095-B", "details": ["Insurance companies (for fully insured plans)", "Small employers that are not ALEs", "Government programs (like Medicaid)", "Reports actual coverage enrollment"], "category": "Health Coverage & Insurance"}, {"term": "Medicare", "details": ["receive Form 1095-B from Medicare (CMS)"], "category": "Health Coverage & Insurance"}, {"term": "Live-in provider for IHSS", "details": ["In-Home Supportive Services", "excluded from federal income tax", "providing care to that individual", "excluded from(CA)  state income tax", "W2: Box 1 (Federal) and Box 16 (CA) can show $0 for IHSS wages", "total non-taxable wages are usually shown in Box 12 with Code II"], "category": "Income & 1099 Documents"}, {"term": "1099DIV for trust account", "details": ["trust\u2019s name and EIN: It belongs on the trust return (Form 1041)", "client\u2019s SSN is on the 1099-DIV: reported on the client\u2019s 1040"], "category": "Trusts & Estates"}, {"term": "Code II in Box 12-W2", "details": ["income may be excludable from federal taxable income", "Social Security & Medicare wages reported"], "category": "Income & 1099 Documents"}, {"term": "AOTC Eligibility", "details": ["American Opportunity Tax Credit (AOTC)", "Up to $2,500 per eligible student", "100% of the first $2,000 of qualified education expenses", "25% of the next $2,000", "Up to $1,000 refundable (even if no tax is owed)"], "category": "Education"}, {"term": "1098T", "details": ["Box 1: Payments received for qualified tuition and related expenses", "Box 5: Scholarships or grants", "credit phases out if Modified Adjusted Gross Income (MAGI):", "Single: $80,000\u2013$90,000", "Married Filing Jointly: $160,000\u2013$180,000"], "category": "Education"}, {"term": "LLC Type", "details": ["Single Member: LLC", "Multi-Member: 1065", "LLC taxed as S-Corp: 1120S", "LLC taxed as C-Corp: 1120"], "category": "Business & Self-Employment"}, {"term": "Car Donation", "details": ["1098-C (required for vehicle donations over $500)", "Enter Charitable Contributions (Schedule A)"], "category": "Deductions & Credits"}, {"term": "Asset Entry", "details": ["Asset Entry Worksheet", "if more than 2,500 amount", "under $2,500, you can use the De Minimis Safe Harbor and expense it in the current year"], "category": "Business & Self-Employment"}, {"term": "HOH Status", "details": ["Dependent must lived with the taxpayer more than half the year", "qualifying child or qualifying relative", "Education expenses (like tuition) if student is the taxpayer"], "category": "Dependents & Family"}, {"term": "1099INT is under Trust", "details": ["1099-INT shows the taxpayer\u2019s SSN", "Enter the 1099-INT on the individual return (Form 1040)"], "category": "Trusts & Estates"}, {"term": "CRUT", "details": ["Charitable Remainder Unitrust", "trust that pays them income", "managed by U.S. Bank.", "trust issues a Schedule K-1"], "category": "Trusts & Estates"}, {"term": "Wordwide income", "details": ["rental income must be reported", "need to claim a Foreign Tax Credit (Form 1116)", "This prevents double taxation"], "category": "Filing Status & Residency"}, {"term": "MSRRA", "details": ["protect Employee wages"], "category": "Filing Status & Residency"}, {"term": "Medical & Dental Copays", "details": ["copays are deductible medical expenses", "doctor visits, prescriptions, and dental appointments", "only the portion of total medical expenses that exceeds 7.5% AGI", "example her AGI is $80,000", "7.5% = $6,000", "Only medical expenses above $6,000 would be deductible", "Medical expenses are deductible only if the client itemizes deductions", "only the amount over 7.5% of Adjusted Gross Income (AGI) counts", "qualified medical expenses (Schedule A)", "Doctor/medical visits (\u201cMedical\u201d)", "Dental expenses", "Prescription medications (e.g., Kaiser pharmacy)", "Payments to healthcare providers (like Kaiser)", "HSA-eligible items (if not reimbursed)"], "category": "Deductions & Credits"}, {"term": "Property switch", "details": ["Prorated income/expenses"], "category": "Deductions & Credits"}, {"term": "AOC", "details": ["American Opportunity Credit", "Up to $2,500 per eligible student", "First 4 years of undergraduate education", "40% refundable (up to $1,000)"], "category": "Education"}, {"term": "LLC", "details": ["Lifetime Learning Credit", "Up to $2,000 per return", "Unlimited years and non-refundable"], "category": "Education"}, {"term": "1099Q", "details": ["529 plan (Qualified Tuition Program)", "Coverdell ESA", "Qualified expenses for 529 plans include", "Tuition", "Books", "Equipment"], "category": "Education"}, {"term": "Contract labor", "details": ["1099-NEC is not required unless payments were $600 or more"], "category": "Income & 1099 Documents"}, {"term": "SCRA", "details": ["Servicemembers Civil Relief Act", "Active-duty military members do not become California residents", "maintains Texas residency, he is not subject to California income tax", "oes not need to file a California resident return"], "category": "Filing Status & Residency"}, {"term": "CAUTMA", "details": ["California Uniform Transfers to Minors Act account", "the minor (child) is the taxpayer", "the parent can elect to report the child\u2019s investment income", "Child is under age 19 (or under 24 and full-time student)", "Only interest/dividends (no capital gains from selling investments)", "Total investment income below the IRS threshold (around $11k+ range depending on year)"], "category": "Dependents & Family"}, {"term": "W-2G", "details": ["obtain it directly from the gambling operator", "win/loss statement is typically used only as supporting documentation for gambling losses", "does not replace the W-2G for reporting gambling winnings", "$1,200+ from slots or bingo", "$1,500+ from keno", "$5,000+ from poker tournaments", "$600+ for other wagers if payout is 300\u00d7 the wager"], "category": "Other"}, {"term": "UBIA", "details": ["Unadjusted Basis Immediately After Acquisition", "Tangible business property (equipment, buildings, machinery, etc.)", "Used in a trade or business", "Depreciable", "used to determine limits on the QBI deduction when income is above"], "category": "Business & Self-Employment"}, {"term": "Donations", "details": ["Deductible up to 60% of your Adjusted Gross Income (AGI)", "Example- AGI: $100,000", "Max deductible donation: $60,000", "Excess donations can also be carried forward for 5 years", "donation \u2265 $250 \u2192 written acknowledgment required", "property donation > $500 \u2192 file Form 8283", "property > $5,000 \u2192 qualified appraisal required"], "category": "Deductions & Credits"}, {"term": "Annual Gift", "details": ["United States Gift (and Generation-Skipping Transfer) Tax Return", "Annual gift exclusion \u2248 $18,000 per recipient", "file IRS Form 709", "reduces her lifetime estate and gift exemption (currently about $13M+)"], "category": "Deductions & Credits"}, {"term": "Donation without receipts", "details": ["$250 or More (Per Donation) -Need ritten acknowledgment from Goodwill", "under $500 total, he does not need a formal receipt \u2014 but he must have records", "over $5,000, a qualified appraisal is required"], "category": "Deductions & Credits"}, {"term": "FSA contributions", "details": ["reduce Box 1 wages on the W-2", "shown in Box 14 or Box 12 (code W for HSA only)", "Medical expenses reimbursed by FSA cannot be deducted on Schedule A", "unreimbursed expenses exceeding 7.5% of AGI can be deductible"], "category": "Health Coverage & Insurance"}, {"term": "FSA vs HSA", "details": ["Flexible Spending Account (FSA)", "Funded through payroll deductions", "Contributions are already pre-tax on the W-2", "No separate tax forms are issued for filing", "reflected in Box 14 or payroll deductions on their W-2", "HSA (Health Savings Account)", "paired with a High Deductible Health Plan (HDHP)", "reported on Form 5498-SA and Form 1099-SA"], "category": "Health Coverage & Insurance"}, {"term": "C-Corp vs S-Corp", "details": ["S-Corp (S corporation) is not a business entity type", "a tax election a corporation (or LLC) can file with the Internal Revenue Service using Form 2553", "C Corporation \u2192 default if no tax election was mad", "S Corporation \u2192 if the company filed an S-Corp election with the IRS"], "category": "Business & Self-Employment"}, {"term": "Medicare vs. Public Exchange", "details": ["public exchange refers to the Health Insurance Marketplace created under the Affordable Care Act", "Plans purchased there generate Form 1095-A", "form reports premium tax credits for ACA marketplace plans", "enrolled in Medicare generally cannot receive ACA premium tax credits", "Form 1095-B \u2013 shows minimum essential coverage", "Form 1095-C \u2013 only if an employer plan is involved"], "category": "Health Coverage & Insurance"}, {"term": "Child support", "details": ["Child support received \u2192 Not taxable income", "Child support paid \u2192 Not deductible", "enter dependents, custody, or childcare expenses related to the child", "affects:", "Child Tax Credit", "Earned Income Credit", "Filing status (Head of Household)"], "category": "Dependents & Family"}, {"term": "Property damage", "details": ["only deductible if it is due to a federally declared disaster", "Examples that may qualify:", "Hurricane", "Flood", "Wildfire", "Earthquake", "Other disasters declared by the federal government", "However, if the property is:", "Rental property", "Business property", "Then the loss can still be deductible regardless of disaster status."], "category": "Deductions & Credits"}, {"term": "childcare expense", "details": ["amounts you paid to your daughter\u2019s school for after-school care services", "made for supervision and care while parents were working", "not for for regular school tuition", "not for primarily academic tutoring", "not for extracurricular lessons (music, sports, etc.)"], "category": "Dependents & Family"}, {"term": "Sport camps", "details": ["qualify for the Child and Dependent Care Credit", "only if the child is under age 13 at the time of care", "It\u2019s a day camp (not overnight)"], "category": "Dependents & Family"}, {"term": "1099-B", "details": ["generated if there were reportable sales or redemptions of securities", "No sales of stocks, ETFs, mutual funds, or bond", "No option transactions that closed", "All activity was inside a retirement account (IRA, 401(k), etc.)"], "category": "Income & 1099 Documents"}, {"term": "Ceritification related to job", "details": ["qualifies as deductible work-related education"], "category": "Education"}, {"term": "IRS estimated tax", "details": ["1040ES (for 1040, 1040A, 1040EZ)"], "category": "Filing Status & Residency"}, {"term": "MA Rent Deduction", "details": ["renters may deduct 50% of the rent paid", "up to a maximum deduction of $4,000 per return", "Not be claiming rent for a property they own"], "category": "Deductions & Credits"}, {"term": "Head of Household (HOH)", "details": ["dependent (his mother) qualifies (lived with him, support test, etc.)", "Qualifying Relative (not a child)", "parent is physically or mentally incapable of self-care"], "category": "Dependents & Family"}, {"term": "GST non-exempt trust return", "details": ["Not a fully exempt trust (no automatic exemption allocation)", "Trust type (revocable, irrevocable, dynasty, etc.)", "Date of creation (important for GST grandfathering rules)", "Transfers to skip persons (e.g., grandchildren)", "Distributions from trust to skip persons", "When a non-skip interest ends and only skip persons remain"], "category": "Trusts & Estates"}, {"term": "GI Bill (Chapter 33)", "details": ["Tuition and fees", "Housing allowance", "Books and supplies", "GI Bill benefits = tax-free"], "category": "Education"}, {"term": "MED & DEN", "details": ["(Medical & Dental)", "W-2 Box 14", "Other (not classified)", "reflects after-tax or pre-tax payroll deductions for health coverage"], "category": "Health Coverage & Insurance"}, {"term": "W-2G", "details": ["W-2G reporting thresholds include:", "$1,200+ from slots or bingo", "$1,500+ from keno", "$5,000+ from poker tournaments", "$600+ for other wagers if payout is 300\u00d7 the wager", "Casinos issue a W-2G only when a single qualifying win occurs"], "category": "Other"}, {"term": "1099-Rs for Pension", "details": ["DFAS or RAS", "mark the amount estimated"], "category": "Retirement & Investments"}];
     let glossarySearchTerm = '';
     let pendingPhotoDataUrl = '';
 
@@ -1075,9 +1180,13 @@
           const photoActions = g.photo
             ? '<button class="photo-btn" data-idx="' + idx + '">🔄 Change Photo</button><button class="photo-remove-btn" data-idx="' + idx + '">✕ Remove</button>'
             : '<button class="photo-btn" data-idx="' + idx + '">📷 Add Photo</button>';
+          const guideActions = g.guideLink
+            ? '<a href="' + escapeHtmlG(g.guideLink) + '" target="_blank" rel="noopener" class="guide-link-btn">🎥 Watch Guide</a><button class="guide-edit-btn" data-idx="' + idx + '">✎ Edit</button><button class="guide-remove-btn" data-idx="' + idx + '">✕ Remove</button>'
+            : '<button class="guide-add-btn" data-idx="' + idx + '">🔗 Add Video/Guide Link</button>';
           return '<div class="term-card"><h3>' + escapeHtmlG(g.term) + '</h3><ul>' +
             g.details.map(function(d){ return '<li>' + escapeHtmlG(d) + '</li>'; }).join('') +
-            '</ul>' + photoHtml + '<div class="term-photo-actions">' + photoActions + '</div></div>';
+            '</ul>' + photoHtml + '<div class="term-photo-actions">' + photoActions + '</div>' +
+            '<div class="term-guide-actions">' + guideActions + '</div></div>';
         }).join('');
         return '<div class="glossary-category">' +
           '<div class="glossary-category-title" onclick="toggleCategory(\'' + cat.replace(/'/g, "\\'") + '\')">' +
@@ -1100,6 +1209,9 @@
       const addBtn = e.target.closest('.photo-btn');
       const removeBtn = e.target.closest('.photo-remove-btn');
       const photoImg = e.target.closest('.term-card img');
+      const guideAddBtn = e.target.closest('.guide-add-btn');
+      const guideEditBtn = e.target.closest('.guide-edit-btn');
+      const guideRemoveBtn = e.target.closest('.guide-remove-btn');
       if(addBtn){
         currentPhotoTargetIdx = parseInt(addBtn.dataset.idx, 10);
         document.getElementById('termPhotoInput').click();
@@ -1110,6 +1222,24 @@
         renderGlossary(document.getElementById('glossarySearch').value);
       } else if(photoImg){
         openLightbox(photoImg.src, photoImg.alt);
+      } else if(guideAddBtn || guideEditBtn){
+        const idx = parseInt((guideAddBtn || guideEditBtn).dataset.idx, 10);
+        const current = GLOSSARY_TERMS[idx].guideLink || '';
+        const url = prompt('Paste a video, Scribe, or visual guide link for "' + GLOSSARY_TERMS[idx].term + '":', current);
+        if(url === null) return; // cancelled
+        const trimmed = url.trim();
+        if(trimmed){
+          GLOSSARY_TERMS[idx].guideLink = trimmed;
+        } else {
+          delete GLOSSARY_TERMS[idx].guideLink;
+        }
+        saveGlossaryState();
+        renderGlossary(document.getElementById('glossarySearch').value);
+      } else if(guideRemoveBtn){
+        const idx = parseInt(guideRemoveBtn.dataset.idx, 10);
+        delete GLOSSARY_TERMS[idx].guideLink;
+        saveGlossaryState();
+        renderGlossary(document.getElementById('glossarySearch').value);
       }
     });
 
@@ -1155,6 +1285,7 @@
       document.getElementById('newTermDetails').value = '';
       document.getElementById('newTermCategory').value = 'Other';
       document.getElementById('newTermPhoto').value = '';
+      document.getElementById('newTermGuideLink').value = '';
       document.getElementById('photoPreview').style.display = 'none';
       pendingPhotoDataUrl = '';
     }
@@ -1196,9 +1327,11 @@
       const detailsRaw = document.getElementById('newTermDetails').value;
       const details = detailsRaw.split(String.fromCharCode(10)).map(function(s){ return s.trim(); }).filter(Boolean);
       const category = document.getElementById('newTermCategory').value;
+      const guideLink = document.getElementById('newTermGuideLink').value.trim();
       if(!name){ alert('Give the term a name first.'); return; }
       const newTerm = { term: name, details: details, category: category };
       if(pendingPhotoDataUrl) newTerm.photo = pendingPhotoDataUrl;
+      if(guideLink) newTerm.guideLink = guideLink;
       GLOSSARY_TERMS = [newTerm].concat(GLOSSARY_TERMS);
       await saveGlossaryState();
       cancelAddTerm();
