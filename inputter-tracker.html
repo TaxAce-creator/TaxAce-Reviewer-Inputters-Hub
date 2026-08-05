@@ -1,0 +1,1493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaxAce Inputters Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --paper:#ffffff;
+    --paper-dim:#f2f2f2;
+    --ink:#241f18;
+    --ink-soft:#5c5343;
+    --rust:#b5502e;
+    --rust-dim:#8f3f24;
+    --green:#4c6b47;
+    --amber:#a97c1f;
+    --line:#dcdcdc;
+    --card:#ffffff;
+    --nav-bg:#241f18;
+    --nav-fg:#f5f1e6;
+  }
+  html[data-theme="dark"]{
+    --paper:#16140f;
+    --paper-dim:#211d17;
+    --ink:#ece7db;
+    --ink-soft:#a89f8c;
+    --rust:#d97a52;
+    --rust-dim:#e69574;
+    --green:#7fae76;
+    --amber:#d9a94a;
+    --line:#3a352c;
+    --card:#1e1b16;
+    --nav-bg:#0c0b09;
+    --nav-fg:#f5f1e6;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+    transition:background .2s ease, color .2s ease;
+  }
+  ::selection{background:var(--rust);color:var(--paper);}
+
+  header{
+    border-bottom:2px solid var(--ink);
+    padding:20px 36px 22px;
+    background:
+      repeating-linear-gradient(135deg, transparent, transparent 38px, rgba(181,80,46,0.035) 38px, rgba(181,80,46,0.035) 76px),
+      var(--paper);
+  }
+  .back-btn{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    font-weight:600;
+    color:var(--ink-soft);
+    text-decoration:none;
+    padding:6px 0 14px;
+  }
+  .back-btn:hover{color:var(--rust);}
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--rust);
+    margin-bottom:6px;
+  }
+  h1{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:700;
+    font-size:32px;
+    margin:0 0 4px;
+    letter-spacing:-0.01em;
+  }
+  .subhead{
+    font-size:14px;
+    color:var(--ink-soft);
+  }
+  .subhead b{color:var(--ink);font-weight:600;}
+
+  main{padding:28px 36px 60px;max-width:1360px;margin:0 auto;}
+
+  .toolbar{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    flex-wrap:wrap;
+    margin-bottom:10px;
+    padding:12px 16px;
+    background:var(--nav-bg);
+  }
+  .search-wrap{
+    display:flex;
+    align-items:stretch;
+    flex:1 1 260px;
+    max-width:360px;
+  }
+  .search-wrap input[type=text]{
+    flex:1;
+    border:none;
+    padding:9px 12px;
+    font-family:'Inter',sans-serif;
+    font-size:13px;
+    background:#ffffff;
+    color:#241f18;
+  }
+  .btn.nav-search-btn{
+    background:var(--rust);
+    border-radius:0;
+    padding:9px 14px;
+  }
+  .btn.nav-search-btn:hover{background:var(--rust-dim);}
+  .btn.refresh-btn{
+    background:#3E6FD9;
+    border-radius:4px;
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .btn.refresh-btn:hover{background:#3159b8;}
+  .btn.export-dashboard-btn{
+    background:transparent;
+    border:1px solid var(--nav-fg);
+    color:var(--nav-fg);
+  }
+  .btn.export-dashboard-btn:hover{background:var(--nav-fg);color:var(--nav-bg);}
+  .btn.theme-toggle-btn{
+    background:transparent;
+    border:1px solid var(--nav-fg);
+    color:var(--nav-fg);
+    padding:9px 12px;
+  }
+  .btn.theme-toggle-btn:hover{background:var(--nav-fg);color:var(--nav-bg);}
+  select.nav-select{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12.5px;
+    padding:8px 10px;
+    background:#1a1611;
+    color:var(--nav-fg);
+    border:1px solid #4a4030;
+    cursor:pointer;
+  }
+  .toolbar .status-pill{font-size:11px;}
+
+  .data-utility{
+    display:flex;
+    align-items:center;
+    gap:16px;
+    flex-wrap:wrap;
+    margin-bottom:26px;
+    padding:8px 16px;
+    background:var(--paper-dim);
+    border-bottom:1px solid var(--line);
+  }
+  .data-utility .label{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    color:var(--ink-soft);
+    letter-spacing:.03em;
+  }
+  .util-link{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;
+    color:var(--ink-soft);
+    text-decoration:underline;
+    cursor:pointer;
+  }
+  .util-link:hover{color:var(--rust);}
+  .util-link.warn:hover{color:var(--rust-dim);}
+  input[type=file]{display:none;}
+  .btn{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:600;
+    font-size:13px;
+    letter-spacing:.02em;
+    padding:9px 16px;
+    background:var(--ink);
+    color:var(--paper);
+    border:none;
+    cursor:pointer;
+    transition:background .15s ease;
+  }
+  .btn:hover{background:var(--rust-dim);}
+  .btn.ghost{
+    background:transparent;
+    color:var(--ink);
+    border:1px solid var(--ink);
+  }
+  .btn.ghost:hover{background:var(--ink);color:var(--paper);}
+  .btn.rust{background:var(--rust);}
+  .btn.rust:hover{background:var(--rust-dim);}
+  .status-pill{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    color:var(--green);
+    margin-left:auto;
+  }
+  .status-pill.empty{color:var(--ink-soft);}
+
+  .stats{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+    gap:1px;
+    background:var(--line);
+    border:1px solid var(--line);
+    margin-bottom:26px;
+  }
+  .stat{
+    background:var(--card);
+    padding:16px 18px;
+  }
+  .stat .num{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:700;
+    font-size:28px;
+    line-height:1;
+  }
+  .stat .lbl{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10.5px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    margin-top:6px;
+  }
+  .stat.rust .num{color:var(--rust);}
+
+  .panel{
+    background:var(--card);
+    border:1px solid var(--line);
+    margin-bottom:26px;
+  }
+  .panel-pair{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:20px;
+    margin-bottom:26px;
+  }
+  .panel-pair .panel{margin-bottom:0;}
+  @media (max-width:820px){
+    .panel-pair{grid-template-columns:1fr;gap:0;}
+    .panel-pair .panel{margin-bottom:20px;}
+  }
+  .panel-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:12px 18px;
+    border-bottom:1px solid var(--line);
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:600;
+    font-size:14px;
+  }
+  .panel-head .count{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    color:var(--ink-soft);
+    font-weight:400;
+  }
+  .workload{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    padding:16px 18px;
+  }
+  .wl-row{
+    display:grid;
+    grid-template-columns:130px 1fr 40px;
+    align-items:center;
+    gap:10px;
+  }
+  .wl-name{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+  }
+  .wl-bar-track{
+    height:10px;
+    background:var(--paper-dim);
+    position:relative;
+    overflow:hidden;
+  }
+  .wl-bar-fill{
+    height:100%;
+    background:var(--rust);
+  }
+  .wl-count{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    text-align:right;
+    color:var(--ink-soft);
+  }
+
+  .filters{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    padding:14px 18px;
+    border-bottom:1px solid var(--line);
+    align-items:center;
+  }
+  .filters input[type=text], .filters select{
+    font-family:'Inter',sans-serif;
+    font-size:13px;
+    padding:7px 10px;
+    border:1px solid var(--line);
+    background:var(--paper);
+    color:var(--ink);
+  }
+  .filters select{cursor:pointer;}
+  .filters input[type=text]{min-width:220px;}
+  .filters .clear-filters{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    color:var(--rust);
+    cursor:pointer;
+    text-decoration:underline;
+    margin-left:auto;
+  }
+
+  table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:13px;
+  }
+  thead th{
+    text-align:left;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10.5px;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    padding:9px 14px;
+    border-bottom:2px solid var(--ink);
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  thead th:hover{color:var(--rust);}
+  thead th.active{color:var(--rust);}
+  tbody td{
+    padding:9px 14px;
+    border-bottom:1px solid var(--line);
+    vertical-align:top;
+  }
+  tbody tr:hover{background:var(--paper-dim);}
+  tbody tr.sent-back-row{background:rgba(181,80,46,0.08);}
+  tbody tr.sent-back-row:hover{background:rgba(181,80,46,0.14);}
+  .sentback-cell{
+    display:flex;
+    flex-direction:column;
+    gap:3px;
+    align-items:flex-start;
+  }
+  .sentback-cell input[type=checkbox]{
+    width:15px;
+    height:15px;
+    accent-color:var(--rust);
+    cursor:pointer;
+  }
+  .sentback-reason{
+    font-size:11px;
+    color:var(--rust-dim);
+    max-width:160px;
+    white-space:pre-wrap;
+    cursor:pointer;
+  }
+  .sentback-reason:hover{text-decoration:underline;}
+  .sentback-tag{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10px;
+    letter-spacing:.04em;
+    text-transform:uppercase;
+    color:var(--rust);
+  }
+  .status-breakdown{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10.5px;
+    letter-spacing:.02em;
+  }
+  .inline-select{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    padding:4px 6px;
+    border:1px solid var(--line);
+    background:var(--paper);
+    color:var(--ink);
+    cursor:pointer;
+  }
+  .reviewer-notes-cell{
+    max-width:180px;
+    font-size:12px;
+    white-space:pre-wrap;
+    cursor:pointer;
+  }
+  .reviewer-notes-cell:hover{background:rgba(181,80,46,0.08);}
+  .reviewer-notes-text{color:var(--rust-dim);}
+  .client-name{font-weight:600;}
+  .mono{font-family:'IBM Plex Mono',monospace;font-size:12px;}
+  .badge{
+    display:inline-block;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10.5px;
+    letter-spacing:.03em;
+    padding:2px 8px;
+    border:1px solid currentColor;
+  }
+  .badge.approved{color:var(--green);}
+  .badge.completed{color:var(--green);}
+  .badge.pending{color:var(--amber);}
+  .badge.correction{color:var(--rust);}
+  .badge.none{color:var(--ink-soft);border-style:dashed;}
+  .note-flag{
+    font-size:12px;
+    color:var(--ink-soft);
+    white-space:pre-wrap;
+    max-width:280px;
+  }
+  .note-flag.warn{color:var(--rust);}
+
+  .empty-state{
+    padding:60px 20px;
+    text-align:center;
+    color:var(--ink-soft);
+  }
+  .empty-state .big{
+    font-family:'Space Grotesk',sans-serif;
+    font-size:20px;
+    font-weight:600;
+    color:var(--ink);
+    margin-bottom:8px;
+  }
+
+  .add-form{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+    gap:10px;
+    padding:16px 18px;
+  }
+  .add-form input, .add-form select, .add-form textarea{
+    font-family:'Inter',sans-serif;
+    font-size:13px;
+    padding:8px 10px;
+    border:1px solid var(--line);
+    background:var(--paper);
+    color:var(--ink);
+    width:100%;
+  }
+  .add-form textarea.notes-area{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12.5px;
+    line-height:1.5;
+    resize:vertical;
+    min-height:90px;
+    white-space:pre-wrap;
+  }
+  .add-form .full{grid-column:1/-1;}
+  .add-form-actions{
+    grid-column:1/-1;
+    display:flex;
+    gap:10px;
+    justify-content:flex-end;
+  }
+
+  footer{
+    text-align:center;
+    padding:20px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    color:var(--ink-soft);
+  }
+
+  .modal-overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(36,31,24,0.55);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:1000;
+    padding:20px;
+  }
+  .modal-box{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-top:4px solid var(--rust);
+    padding:20px;
+    width:360px;
+    max-width:100%;
+  }
+  .modal-box .modal-msg{
+    font-size:13px;
+    color:var(--ink);
+    margin-bottom:12px;
+    line-height:1.4;
+  }
+  .modal-box input, .modal-box textarea{
+    width:100%;
+    padding:9px 10px;
+    border:1px solid var(--line);
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    font-size:13px;
+    margin-bottom:14px;
+  }
+  .modal-box textarea{
+    resize:vertical;
+    min-height:60px;
+    line-height:1.4;
+  }
+  .modal-actions{
+    display:flex;
+    justify-content:flex-end;
+    gap:8px;
+  }
+
+  @media (max-width:640px){
+    header, main{padding-left:18px;padding-right:18px;}
+    .wl-row{grid-template-columns:100px 1fr 34px;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <a href="index.html" class="back-btn">← Hub</a>
+  <h1>TaxAce Inputters Dashboard</h1>
+</header>
+
+<main>
+
+  <div class="toolbar">
+    <div class="search-wrap">
+      <input type="text" id="searchBox" placeholder="Search client…">
+      <button class="btn nav-search-btn" id="navSearchBtn">Search</button>
+    </div>
+    <button class="btn refresh-btn" id="refreshBtn">⟳ Refresh</button>
+    <select id="filterInputter" class="nav-select"><option value="">All Inputters</option></select>
+    <button class="btn export-dashboard-btn" id="exportDashboardBtn">⇩ Export Dashboard</button>
+    <button class="btn theme-toggle-btn" id="themeToggleBtn">🌙 Dark</button>
+    <span class="status-pill empty" id="statusPill" style="margin-left:auto;"></span>
+  </div>
+
+  <div class="data-utility">
+    <span class="label">Data:</span>
+    <span class="util-link" onclick="document.getElementById('fileInput').click()">Import .xlsx</span>
+    <input type="file" id="fileInput" accept=".xlsx,.xls">
+    <span class="util-link" id="loadDemoBtn">Load Sample</span>
+    <span class="util-link" id="exportBtn">Export CSV</span>
+    <span class="util-link warn" id="clearBtn">Clear Saved Data</span>
+  </div>
+
+  <div class="stats" id="statsRow"></div>
+
+  <div class="panel-pair">
+    <div class="panel" id="inputterPanel" style="display:none;">
+      <div class="panel-head"><span>Entries by Inputter</span><span class="count" id="inputterCount"></span></div>
+      <div class="workload" id="inputterBody"></div>
+    </div>
+
+    <div class="panel" id="workloadPanel" style="display:none;">
+      <div class="panel-head"><span>Reviewer Workload</span><span class="count" id="workloadCount"></span></div>
+      <div class="workload" id="workloadBody"></div>
+    </div>
+  </div>
+
+  <div class="panel-pair">
+    <div class="panel" id="todayPanel" style="display:none;">
+      <div class="panel-head"><span>Today's Entries</span><span class="count" id="todayCount"></span></div>
+      <div class="workload" id="todayBody"></div>
+      <div id="todayFooter" style="padding:0 18px 14px;text-align:right;"></div>
+    </div>
+
+    <div class="panel" id="monthPanel" style="display:none;">
+      <div class="panel-head"><span>This Month's Entries</span><span class="count" id="monthCount"></span></div>
+      <div class="workload" id="monthBody"></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <span>Add Entry</span>
+      <span class="count">manual log entry</span>
+    </div>
+    <div class="add-form">
+      <select id="f_inputter">
+        <option value="">Inputter…</option>
+      </select>
+      <input type="date" id="f_date" title="Date Inputted">
+      <input type="text" id="f_taxyear" placeholder="Tax Year (e.g. 2025)">
+      <input type="text" id="f_client" placeholder="Client Name" class="full-min">
+      <select id="f_reviewer">
+        <option value="">Reviewer…</option>
+      </select>
+      <select id="f_status">
+        <option value="">Status…</option>
+        <option>Completed</option>
+        <option>In Progress</option>
+        <option>On Hold</option>
+      </select>
+      <select id="f_docsneeded">
+        <option value="">Docs Needed?</option>
+        <option>YES</option>
+        <option>NO</option>
+      </select>
+      <textarea id="f_notes" placeholder="Notes / follow-up — paste multi-line lists here, spacing is kept" class="full notes-area" rows="4"></textarea>
+      <div class="add-form-actions">
+        <button class="btn rust" id="addEntryBtn">+ Add to Log</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="logPanel">
+    <div class="panel-head">
+      <span>Inputted Log</span>
+      <span class="count" id="tableCount"></span>
+    </div>
+    <div class="filters">
+      <select id="filterReviewer"><option value="">All Reviewers</option></select>
+      <select id="filterStatus"><option value="">All Statuses</option></select>
+      <select id="filterYear"><option value="">All Tax Years</option></select>
+      <select id="filterSentBack">
+        <option value="">All Entries</option>
+        <option value="yes">Sent Back Only</option>
+        <option value="no">Not Sent Back</option>
+      </select>
+      <span class="clear-filters" id="clearFilters">Clear filters</span>
+    </div>
+    <div style="overflow-x:auto;">
+      <table id="dataTable">
+        <thead>
+          <tr>
+            <th data-key="inputter">Inputter</th>
+            <th data-key="date">Date Inputted</th>
+            <th data-key="taxyear">Tax Yr</th>
+            <th data-key="client">Client</th>
+            <th data-key="reviewer">Reviewer</th>
+            <th data-key="status">Status</th>
+            <th data-key="datecompleted">Date Completed</th>
+            <th data-key="docsneeded">Docs Needed</th>
+            <th data-key="notes">Inputter Notes</th>
+            <th data-key="sentback">Send Back</th>
+            <th data-key="reviewernotes">Reviewer Notes</th>
+            <th data-key="additionaldocs">Additional Documents/Reinput</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+    <div class="empty-state" id="emptyState">
+      <div class="big">No entries yet</div>
+      <div>Upload your working file above, load the sample, or add an entry manually to get started.</div>
+    </div>
+  </div>
+
+</main>
+
+<footer>TaxAce AI Hub — Inputter Tracker · data stays in this browser (localStorage), nothing is uploaded anywhere</footer>
+
+<script>
+// Theme handling — shares the "taxace-hub-theme" key with the TaxAce Reviewer Hub
+// (confirmed from the Reviewers Dashboard source) so this genuinely stays in sync,
+// and updates live via the 'storage' event when toggled in another tab on the hub.
+const THEME_KEY = 'taxace-hub-theme';
+
+function applyTheme(theme){
+  document.documentElement.setAttribute('data-theme', theme);
+  const btn = document.getElementById('themeToggleBtn');
+  if(btn) btn.textContent = theme === 'dark' ? '☀ Light' : '🌙 Dark';
+}
+
+function setTheme(theme){
+  applyTheme(theme);
+  try{ localStorage.setItem(THEME_KEY, theme); }catch(e){}
+}
+
+function initTheme(){
+  let theme;
+  try{ theme = localStorage.getItem(THEME_KEY); }catch(e){}
+  if(!theme){
+    theme = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+  }
+  applyTheme(theme);
+}
+initTheme();
+
+window.addEventListener('storage', (e)=>{
+  if(e.key === THEME_KEY && e.newValue){
+    applyTheme(e.newValue);
+  }
+});
+
+const STORAGE_KEY = 'lyka_inputter_tracker_v1';
+const KNOWN_INPUTTERS = ['Lyka', 'Vena', 'Fayne'];
+const KNOWN_REVIEWERS = ['Annalyn', 'Lyndon', 'Dani', 'Jessel'];
+let records = [];
+let sortKey = 'date';
+let sortDir = -1;
+
+function uid(){ return 'r' + Math.random().toString(36).slice(2,10); }
+
+// "Today" must use the person's LOCAL calendar date. new Date().toISOString() converts
+// to UTC first, which silently rolls to the next day for anyone west of UTC (e.g. Pacific
+// time) once it's past mid-afternoon locally — that mismatch was why Today's Entries showed 0.
+function todayLocalISO(){
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+
+function showAlert(message, callback){
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal-box">
+      <div class="modal-msg"></div>
+      <div class="modal-actions">
+        <button class="btn rust" id="modalOk">OK</button>
+      </div>
+    </div>
+  `;
+  overlay.querySelector('.modal-msg').textContent = message;
+  document.body.appendChild(overlay);
+  function cleanup(){ document.body.removeChild(overlay); if(callback) callback(); }
+  overlay.querySelector('#modalOk').addEventListener('click', cleanup);
+  overlay.addEventListener('click', (e)=>{ if(e.target === overlay) cleanup(); });
+}
+
+function showConfirm(message, callback){
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal-box">
+      <div class="modal-msg"></div>
+      <div class="modal-actions">
+        <button class="btn ghost" id="modalCancel">Cancel</button>
+        <button class="btn rust" id="modalOk">OK</button>
+      </div>
+    </div>
+  `;
+  overlay.querySelector('.modal-msg').textContent = message;
+  document.body.appendChild(overlay);
+  function cleanup(val){ document.body.removeChild(overlay); callback(val); }
+  overlay.querySelector('#modalOk').addEventListener('click', ()=>cleanup(true));
+  overlay.querySelector('#modalCancel').addEventListener('click', ()=>cleanup(false));
+  overlay.addEventListener('click', (e)=>{ if(e.target === overlay) cleanup(false); });
+}
+
+function showPrompt(message, defaultValue, callback){
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal-box">
+      <div class="modal-msg"></div>
+      <textarea id="modalInput" rows="3"></textarea>
+      <div class="modal-actions">
+        <button class="btn ghost" id="modalCancel">Cancel</button>
+        <button class="btn rust" id="modalOk">OK</button>
+      </div>
+    </div>
+  `;
+  overlay.querySelector('.modal-msg').textContent = message;
+  document.body.appendChild(overlay);
+  const input = overlay.querySelector('#modalInput');
+  input.value = defaultValue || '';
+  input.focus();
+  input.select();
+
+  function cleanup(val){
+    document.body.removeChild(overlay);
+    callback(val);
+  }
+  overlay.querySelector('#modalOk').addEventListener('click', ()=>cleanup(input.value));
+  overlay.querySelector('#modalCancel').addEventListener('click', ()=>cleanup(null));
+  overlay.addEventListener('click', (e)=>{ if(e.target === overlay) cleanup(null); });
+  input.addEventListener('keydown', e=>{
+    if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); cleanup(input.value); }
+    if(e.key === 'Escape'){ cleanup(null); }
+  });
+}
+
+function excelDateToISO(v){
+  if(v === null || v === undefined || v === '') return '';
+  if(v instanceof Date) return v.toISOString().slice(0,10);
+  if(typeof v === 'number'){
+    const d = XLSX.SSF.parse_date_code(v);
+    if(!d) return '';
+    const mm = String(d.m).padStart(2,'0');
+    const dd = String(d.d).padStart(2,'0');
+    return `${d.y}-${mm}-${dd}`;
+  }
+  // try native parse of a string date
+  const parsed = new Date(v);
+  if(!isNaN(parsed)) return parsed.toISOString().slice(0,10);
+  return '';
+}
+
+function normalizeStatus(s){
+  if(!s) return '';
+  s = String(s).trim();
+  if(/correction/i.test(s)) return 'On Hold';
+  if(/approved|completed/i.test(s)) return 'Completed';
+  if(/pending|progress/i.test(s)) return 'In Progress';
+  return s;
+}
+
+function normalizeReviewer(s){
+  if(!s) return '';
+  return String(s).trim().replace(/^(Ms\.|Mr\.|Mrs\.|Miss|Sir)\s+/i, '').trim();
+}
+
+function parseSheetRows(rows){
+  // rows: array of arrays, first non-empty row assumed header
+  let headerIdx = rows.findIndex(r => r.some(c => String(c||'').toUpperCase().includes('DATE INPUTTED')));
+  if(headerIdx === -1) headerIdx = 0;
+  const header = rows[headerIdx].map(h => String(h||'').trim().toUpperCase());
+  const col = name => header.findIndex(h => h.includes(name));
+
+  const iDate = col('DATE INPUTTED');
+  const iYear = col('TAX YEAR');
+  const iClient = col('CLIENT NAME');
+  const iReviewer = col('REVIEWER');
+  const iStatus = header.findIndex(h => h === 'STATUS');
+  const iDocs = col('DOCS NEEDED');
+  const iNotes = col('NOTES');
+  const iInputter = col('INPUTTER') >= 0 ? col('INPUTTER') : col('INPUTTED BY');
+
+  const out = [];
+  for(let r = headerIdx+1; r < rows.length; r++){
+    const row = rows[r];
+    if(!row || row.every(c => c===null || c===undefined || c==='')) continue;
+    const client = iClient>=0 ? row[iClient] : '';
+    if(!client) continue;
+    out.push({
+      id: uid(),
+      inputter: iInputter>=0 ? String(row[iInputter]||'').trim() : '',
+      date: iDate>=0 ? excelDateToISO(row[iDate]) : '',
+      taxyear: iYear>=0 ? String(row[iYear]||'').replace('.0','') : '',
+      client: String(client).trim(),
+      reviewer: iReviewer>=0 ? normalizeReviewer(row[iReviewer]) : '',
+      status: iStatus>=0 ? normalizeStatus(row[iStatus]) : '',
+      datecompleted: '',
+      docsneeded: iDocs>=0 ? String(row[iDocs]||'').trim() : '',
+      additionaldocs: '',
+      notes: iNotes>=0 ? String(row[iNotes]||'').trim() : '',
+      reviewernotes: '',
+      sentback: false,
+      sentbackdate: ''
+    });
+  }
+  return out;
+}
+
+function loadFile(file){
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const wb = XLSX.read(e.target.result, {type:'array', cellDates:true});
+      let sheetName = wb.SheetNames.find(n => n.trim().toLowerCase() === '2025 inputted');
+      if(!sheetName) sheetName = wb.SheetNames.find(n => /inputted/i.test(n));
+      if(!sheetName){ setStatus('Could not find a "2025 Inputted" tab in this file', true); return; }
+      const ws = wb.Sheets[sheetName];
+      const rows = XLSX.utils.sheet_to_json(ws, {header:1, raw:true});
+      const parsed = parseSheetRows(rows);
+      if(parsed.length === 0){ setStatus('Found the tab but no rows parsed — check column headers', true); return; }
+
+      function finishLoad(){
+        records = parsed;
+        save();
+        render();
+        setStatus(`Loaded ${parsed.length} entries from "${sheetName}"`);
+      }
+
+      // The source sheet has no per-row Inputter column, so rows come back unattributed.
+      // Ask once who this working file belongs to and tag every row that doesn't already have one.
+      const needsAttribution = parsed.some(p => !p.inputter);
+      if(needsAttribution){
+        showPrompt(`Whose working file is this? (${KNOWN_INPUTTERS.join(', ')}, or type a name)`, KNOWN_INPUTTERS[0] || '', (who)=>{
+          if(who && who.trim()){
+            parsed.forEach(p => { if(!p.inputter) p.inputter = who.trim(); });
+          }
+          finishLoad();
+        });
+      } else {
+        finishLoad();
+      }
+    }catch(err){
+      console.error(err);
+      setStatus('Error reading file: ' + err.message, true);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function setStatus(msg, isError){
+  const el = document.getElementById('statusPill');
+  el.textContent = msg;
+  el.className = 'status-pill';
+  el.style.color = isError ? 'var(--rust)' : 'var(--green)';
+}
+
+function save(){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(records)); }catch(e){ console.error(e); }
+}
+
+function loadFromStorage(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){ records = JSON.parse(raw); return true; }
+  }catch(e){ console.error(e); }
+  return false;
+}
+
+function sampleData(){
+  return [
+    {id:uid(), inputter:'Lyka', date:'2026-01-30', taxyear:'2025', client:'Bryan Anabeza', reviewer:'Annalyn', status:'Completed', datecompleted:'2026-01-30', docsneeded:'YES', additionaldocs:'Yes', notes:''},
+    {id:uid(), inputter:'Lyka', date:'2026-01-30', taxyear:'2025', client:'Gary Gilfix', reviewer:'Dani', status:'Completed', datecompleted:'2026-01-30', docsneeded:'YES', additionaldocs:'Yes', notes:''},
+    {id:uid(), inputter:'Vena', date:'2026-01-31', taxyear:'2025', client:'Drake Palmer', reviewer:'Dani', status:'Completed', docsneeded:'YES', additionaldocs:'Yes', notes:''},
+    {id:uid(), inputter:'Lyka', date:'', taxyear:'2025', client:'Jay Kreider', reviewer:'Lyndon', status:'Completed', docsneeded:'YES', additionaldocs:'Yes', notes:''},
+    {id:uid(), inputter:'Fayne', date:'', taxyear:'2025', client:'Sunil Khatri', reviewer:'Dani', status:'Completed', docsneeded:'YES', additionaldocs:'Yes', notes:'ff up organizer'},
+    {id:uid(), inputter:'Vena', date:'', taxyear:'2025', client:'GREGORY VIEAU', reviewer:'Annalyn', status:'On Hold', docsneeded:'YES', additionaldocs:'No', notes:'ff up organizer - 57%', reviewernotes:'Client uploaded a new W2, please re-input', sentback:true},
+    {id:uid(), inputter:'Fayne', date:'2026-03-03', taxyear:'2025', client:'AL LANG', reviewer:'Annalyn', status:'', docsneeded:'', additionaldocs:'', notes:'NEED FILES TO INPUT'},
+    {id:uid(), inputter:'Lyka', date:'', taxyear:'2025', client:'Gerardo Cortez', reviewer:'Annalyn', status:'In Progress', docsneeded:'', additionaldocs:'', notes:'TAX ORGANIZER 14%'},
+    {id:uid(), inputter:'Vena', date:'', taxyear:'2025', client:'Michael Deckert', reviewer:'', status:'', docsneeded:'', additionaldocs:'', notes:'NEED TO RECALL'},
+    {id:uid(), inputter:'Lyka', date:'2026-02-11', taxyear:'2025', client:'Margaret Rodgers', reviewer:'Lyndon', status:'Completed', docsneeded:'YES', additionaldocs:'Yes', notes:'Need to revise'}
+  ];
+}
+
+function uniqueVals(key){
+  return [...new Set(records.map(r => r[key]).filter(v => v && v.trim && v.trim() !== ''))].sort();
+}
+
+function populateFilterOptions(){
+  const reviewers = [...new Set([...KNOWN_REVIEWERS, ...uniqueVals('reviewer')])];
+  const statuses = [...new Set(records.map(r=>r.status).filter(Boolean))].sort();
+  const years = uniqueVals('taxyear');
+  const inputters = [...new Set([...KNOWN_INPUTTERS, ...uniqueVals('inputter')])];
+
+  const fr = document.getElementById('filterReviewer');
+  const cur1 = fr.value;
+  fr.innerHTML = '<option value="">All Reviewers</option>' + reviewers.map(r=>`<option ${r===cur1?'selected':''}>${r}</option>`).join('');
+
+  const fs = document.getElementById('filterStatus');
+  const cur2 = fs.value;
+  fs.innerHTML = '<option value="">All Statuses</option>' + statuses.map(s=>`<option ${s===cur2?'selected':''}>${s}</option>`).join('');
+
+  const fy = document.getElementById('filterYear');
+  const cur3 = fy.value;
+  fy.innerHTML = '<option value="">All Tax Years</option>' + years.map(y=>`<option ${y===cur3?'selected':''}>${y}</option>`).join('');
+
+  const fi = document.getElementById('filterInputter');
+  const cur4 = fi.value;
+  fi.innerHTML = '<option value="">All Inputters</option>' + inputters.map(i=>`<option ${i===cur4?'selected':''}>${i}</option>`).join('');
+
+  const addReviewer = document.getElementById('f_reviewer');
+  const curAR = addReviewer.value;
+  addReviewer.innerHTML = '<option value="">Reviewer…</option>' + reviewers.map(r=>`<option ${r===curAR?'selected':''}>${r}</option>`).join('') + '<option value="__other">Other / New…</option>';
+
+  const addInputter = document.getElementById('f_inputter');
+  const curAI = addInputter.value;
+  addInputter.innerHTML = '<option value="">Inputter…</option>' + inputters.map(i=>`<option ${i===curAI?'selected':''}>${i}</option>`).join('') + '<option value="__other">Other / New…</option>';
+}
+
+function renderStats(){
+  const total = records.length;
+  const completed = records.filter(r=>r.status==='Completed').length;
+  const inProgress = records.filter(r=>r.status==='In Progress').length;
+  const onHold = records.filter(r=>r.status==='On Hold').length;
+  const additionalDocsNeeded = records.filter(r=>r.additionaldocs==='Yes').length;
+  const noStatus = records.filter(r=>!r.status).length;
+  const docsNeeded = records.filter(r=>r.docsneeded && r.docsneeded.toUpperCase()==='YES').length;
+  const sentBack = records.filter(r=>r.sentback).length;
+
+  const stats = [
+    {num: total, lbl:'Total Entries'},
+    {num: completed, lbl:'Completed', cls:'rust'},
+    {num: inProgress, lbl:'In Progress'},
+    {num: onHold, lbl:'On Hold', cls: onHold>0 ? 'rust' : ''},
+    {num: noStatus, lbl:'Awaiting Status'},
+    {num: additionalDocsNeeded, lbl:'Additional Docs / Reinput'},
+    {num: docsNeeded, lbl:'Docs Needed'},
+    {num: sentBack, lbl:'Sent Back To Inputter', cls: sentBack>0 ? 'rust' : ''}
+  ];
+  document.getElementById('statsRow').innerHTML = stats.map(s=>
+    `<div class="stat ${s.cls||''}"><div class="num">${s.num}</div><div class="lbl">${s.lbl}</div></div>`
+  ).join('');
+}
+
+function renderMonthlySummary(){
+  const todayPanel = document.getElementById('todayPanel');
+  const monthPanel = document.getElementById('monthPanel');
+  if(records.length === 0){ todayPanel.style.display='none'; monthPanel.style.display='none'; return; }
+
+  const todayISO = todayLocalISO();
+  const thisMonth = todayISO.slice(0,7); // YYYY-MM
+  const monthLabel = new Date(todayISO).toLocaleDateString('en-US', {month:'long', year:'numeric'});
+  const inputters = [...new Set([...KNOWN_INPUTTERS, ...uniqueVals('inputter')])];
+
+  function statusTag(count, label, color){
+    if(count <= 0) return '';
+    return `<span class="status-breakdown" style="color:${color}">${count} ${label}</span>`;
+  }
+
+  function buildRows(matchFn){
+    const counts = inputters.map(i => {
+      const matched = records.filter(r=>r.inputter===i && matchFn(r));
+      return {
+        name:i,
+        count: matched.length,
+        completed: matched.filter(r=>r.status==='Completed').length,
+        inProgress: matched.filter(r=>r.status==='In Progress').length,
+        onHold: matched.filter(r=>r.status==='On Hold').length
+      };
+    }).sort((a,b)=>b.count-a.count);
+    const max = Math.max(...counts.map(c=>c.count), 1);
+    return counts.map(c => `
+      <div class="wl-row">
+        <div class="wl-name">${c.name}${
+          [statusTag(c.completed,'Completed','var(--green)'), statusTag(c.inProgress,'In Progress','var(--amber)'), statusTag(c.onHold,'On Hold','var(--rust)')]
+            .filter(Boolean).map(t=>' · '+t).join('')
+        }</div>
+        <div class="wl-bar-track"><div class="wl-bar-fill" style="width:${(c.count/max*100).toFixed(0)}%"></div></div>
+        <div class="wl-count">${c.count}</div>
+      </div>
+    `).join('');
+  }
+
+  todayPanel.style.display='';
+  monthPanel.style.display='';
+  document.getElementById('todayCount').textContent = todayISO;
+  document.getElementById('monthCount').textContent = monthLabel;
+  document.getElementById('todayBody').innerHTML = buildRows(r => r.date === todayISO);
+  document.getElementById('monthBody').innerHTML = buildRows(r => r.date && r.date.startsWith(thisMonth));
+
+  const missingDateCount = records.filter(r=>!r.date).length;
+  const todayFooter = document.getElementById('todayFooter');
+  if(missingDateCount > 0){
+    todayFooter.innerHTML = `<span class="util-link" onclick="backfillMissingDates()">${missingDateCount} ${missingDateCount===1?'entry has':'entries have'} no date — set to today →</span>`;
+  } else {
+    todayFooter.innerHTML = '';
+  }
+}
+
+function backfillMissingDates(){
+  const todayISO = todayLocalISO();
+  let count = 0;
+  records.forEach(r => { if(!r.date){ r.date = todayISO; count++; } });
+  save();
+  render();
+  setStatus(`Set ${count} entries to today's date`);
+}
+
+function renderWorkload(){
+  const reviewers = [...new Set([...KNOWN_REVIEWERS, ...uniqueVals('reviewer')])];
+  const panel = document.getElementById('workloadPanel');
+  if(records.length === 0){ panel.style.display='none'; return; }
+  panel.style.display='';
+  const counts = reviewers.map(r => ({name:r, count: records.filter(x=>x.reviewer===r).length}))
+    .sort((a,b)=>b.count-a.count);
+  const max = Math.max(...counts.map(c=>c.count), 1);
+  document.getElementById('workloadCount').textContent = `${reviewers.length} reviewers`;
+  document.getElementById('workloadBody').innerHTML = counts.map(c => `
+    <div class="wl-row">
+      <div class="wl-name">${c.name}</div>
+      <div class="wl-bar-track"><div class="wl-bar-fill" style="width:${(c.count/max*100).toFixed(0)}%"></div></div>
+      <div class="wl-count">${c.count}</div>
+    </div>
+  `).join('');
+}
+
+function renderInputterActivity(){
+  const inputters = [...new Set([...KNOWN_INPUTTERS, ...uniqueVals('inputter')])];
+  const panel = document.getElementById('inputterPanel');
+  if(records.length === 0){ panel.style.display='none'; return; }
+  panel.style.display='';
+  const counts = inputters.map(i => ({
+      name:i,
+      count: records.filter(x=>x.inputter===i).length,
+      sentBack: records.filter(x=>x.inputter===i && x.sentback).length
+    }))
+    .sort((a,b)=>b.count-a.count);
+  const max = Math.max(...counts.map(c=>c.count), 1);
+  const unattributed = records.filter(r=>!r.inputter).length;
+  document.getElementById('inputterCount').textContent = `${records.length} total entries`;
+  let html = counts.map(c => `
+    <div class="wl-row">
+      <div class="wl-name">${c.name}${c.sentBack>0 ? ` <span class="sentback-tag">· ${c.sentBack} sent back</span>` : ''}</div>
+      <div class="wl-bar-track"><div class="wl-bar-fill" style="width:${(c.count/max*100).toFixed(0)}%"></div></div>
+      <div class="wl-count">${c.count}</div>
+    </div>
+  `).join('');
+  if(unattributed > 0){
+    html += `
+    <div class="wl-row">
+      <div class="wl-name" style="color:var(--ink-soft);">Unassigned</div>
+      <div class="wl-bar-track"><div class="wl-bar-fill" style="width:${(unattributed/max*100).toFixed(0)}%;background:var(--ink-soft);"></div></div>
+      <div class="wl-count">${unattributed}</div>
+    </div>
+    <div style="text-align:right;">
+      <span class="util-link" onclick="assignUnattributed()">assign these to someone →</span>
+    </div>`;
+  }
+  document.getElementById('inputterBody').innerHTML = html;
+}
+
+function currentFilters(){
+  return {
+    search: document.getElementById('searchBox').value.trim().toLowerCase(),
+    reviewer: document.getElementById('filterReviewer').value,
+    status: document.getElementById('filterStatus').value,
+    year: document.getElementById('filterYear').value,
+    inputter: document.getElementById('filterInputter').value,
+    sentback: document.getElementById('filterSentBack').value
+  };
+}
+
+function filteredSorted(){
+  const f = currentFilters();
+  let out = records.filter(r=>{
+    if(f.reviewer && r.reviewer !== f.reviewer) return false;
+    if(f.status && r.status !== f.status) return false;
+    if(f.year && r.taxyear !== f.year) return false;
+    if(f.inputter && r.inputter !== f.inputter) return false;
+    if(f.sentback === 'yes' && !r.sentback) return false;
+    if(f.sentback === 'no' && r.sentback) return false;
+    if(f.search){
+      const hay = (r.client + ' ' + r.notes).toLowerCase();
+      if(!hay.includes(f.search)) return false;
+    }
+    return true;
+  });
+  out.sort((a,b)=>{
+    let av = a[sortKey]||'', bv = b[sortKey]||'';
+    if(sortKey==='date'){ av = av||'0000'; bv = bv||'0000'; }
+    if(av < bv) return -1*sortDir;
+    if(av > bv) return 1*sortDir;
+    return 0;
+  });
+  return out;
+}
+
+function renderTable(){
+  const rows = filteredSorted();
+  document.getElementById('tableCount').textContent = `${rows.length} of ${records.length} shown`;
+  const tbody = document.getElementById('tableBody');
+  const empty = document.getElementById('emptyState');
+  const table = document.getElementById('dataTable');
+
+  if(records.length === 0){
+    table.style.display = 'none';
+    empty.style.display = '';
+    tbody.innerHTML = '';
+    return;
+  }
+  table.style.display = '';
+  empty.style.display = 'none';
+
+  tbody.innerHTML = rows.map(r => {
+    const warnNote = /RECALL|NEED FILES|0%/i.test(r.notes||'');
+    return `<tr data-id="${r.id}" class="${r.sentback?'sent-back-row':''}">
+      <td class="mono">${escapeHtml(r.inputter)||'<span class="note-flag">—</span>'}</td>
+      <td class="mono">${r.date || '—'}</td>
+      <td class="mono">${r.taxyear || '—'}</td>
+      <td class="client-name">${escapeHtml(r.client)}</td>
+      <td>${escapeHtml(r.reviewer)||'<span class="note-flag">Unassigned</span>'}</td>
+      <td>
+        <select class="inline-select" onchange="setEntryStatus('${r.id}', this.value)">
+          <option value="" ${!r.status?'selected':''}>—</option>
+          <option value="Completed" ${r.status==='Completed'?'selected':''}>Completed</option>
+          <option value="In Progress" ${r.status==='In Progress'?'selected':''}>In Progress</option>
+          <option value="On Hold" ${r.status==='On Hold'?'selected':''}>On Hold</option>
+        </select>
+      </td>
+      <td><input type="date" class="inline-select" value="${r.datecompleted||''}" onchange="setDateCompleted('${r.id}', this.value)"></td>
+      <td class="mono">${r.docsneeded ? r.docsneeded : '—'}</td>
+      <td class="${warnNote?'note-flag warn':'note-flag'}">${escapeHtml(r.notes)||'—'}</td>
+      <td>
+        <div class="sentback-cell">
+          <input type="checkbox" ${r.sentback?'checked':''} onchange="toggleSentBack('${r.id}')" title="Send back to inputter">
+        </div>
+      </td>
+      <td class="reviewer-notes-cell" onclick="editReviewerNotes('${r.id}')" title="Click to edit reviewer notes">${r.reviewernotes ? `<span class="reviewer-notes-text">${escapeHtml(r.reviewernotes)}</span>` : '<span class="note-flag">(add note)</span>'}</td>
+      <td>
+        <select class="inline-select" onchange="setAdditionalDocs('${r.id}', this.value)">
+          <option value="" ${!r.additionaldocs?'selected':''}>—</option>
+          <option value="Yes" ${r.additionaldocs==='Yes'?'selected':''}>Yes</option>
+          <option value="No" ${r.additionaldocs==='No'?'selected':''}>No</option>
+        </select>
+      </td>
+      <td><span class="mono" style="color:var(--rust);cursor:pointer;" onclick="deleteRow('${r.id}')">✕</span></td>
+    </tr>`;
+  }).join('');
+
+  document.querySelectorAll('thead th[data-key]').forEach(th=>{
+    th.classList.toggle('active', th.dataset.key === sortKey);
+  });
+}
+
+function escapeHtml(s){
+  if(!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function setAdditionalDocs(id, value){
+  const r = records.find(x=>x.id===id);
+  if(!r) return;
+  r.additionaldocs = value;
+  save();
+  render();
+}
+
+function setEntryStatus(id, value){
+  const r = records.find(x=>x.id===id);
+  if(!r) return;
+  r.status = value;
+  if(value === 'Completed'){
+    if(!r.datecompleted) r.datecompleted = todayLocalISO();
+  } else {
+    r.datecompleted = '';
+  }
+  save();
+  render();
+}
+
+function setDateCompleted(id, value){
+  const r = records.find(x=>x.id===id);
+  if(!r) return;
+  r.datecompleted = value;
+  save();
+  render();
+}
+
+function toggleSentBack(id){
+  const r = records.find(x=>x.id===id);
+  if(!r) return;
+  if(!r.sentback){
+    showPrompt('Why is this being sent back to the inputter? (e.g. "client uploaded new W2", "missing SSN digits") — optional', r.reviewernotes || '', (reason)=>{
+      r.sentback = true;
+      if(reason && reason.trim()) r.reviewernotes = reason.trim();
+      r.sentbackdate = todayLocalISO();
+      save();
+      render();
+    });
+  } else {
+    r.sentback = false;
+    r.sentbackdate = '';
+    save();
+    render();
+  }
+}
+
+function editReviewerNotes(id){
+  const r = records.find(x=>x.id===id);
+  if(!r) return;
+  showPrompt('Reviewer notes for this client:', r.reviewernotes || '', (note)=>{
+    if(note === null) return;
+    r.reviewernotes = note.trim();
+    save();
+    render();
+  });
+}
+
+function assignUnattributed(){
+  showPrompt(`Assign all unassigned entries to whom? (${KNOWN_INPUTTERS.join(', ')}, or type a name)`, KNOWN_INPUTTERS[0] || '', (who)=>{
+    if(!who || !who.trim()) return;
+    const name = who.trim();
+    let count = 0;
+    records.forEach(r => { if(!r.inputter){ r.inputter = name; count++; } });
+    save();
+    render();
+    setStatus(`Assigned ${count} entries to ${name}`);
+  });
+}
+
+function deleteRow(id){
+  records = records.filter(r=>r.id !== id);
+  save();
+  render();
+}
+
+function render(){
+  populateFilterOptions();
+  renderStats();
+  renderInputterActivity();
+  renderWorkload();
+  renderMonthlySummary();
+  renderTable();
+}
+
+// event wiring
+document.getElementById('navSearchBtn').addEventListener('click', ()=>{
+  renderTable();
+  document.getElementById('logPanel').scrollIntoView({behavior:'smooth', block:'start'});
+});
+
+document.getElementById('refreshBtn').addEventListener('click', ()=>{
+  loadFromStorage();
+  render();
+  setStatus(`Refreshed — ${records.length} entries`);
+  // NOTE: once this dashboard is wired to a live Sheet/Apps Script sync,
+  // this handler is where the fetch-and-reload call should go.
+});
+
+document.getElementById('themeToggleBtn').addEventListener('click', ()=>{
+  const current = document.documentElement.getAttribute('data-theme') || 'light';
+  setTheme(current === 'dark' ? 'light' : 'dark');
+});
+
+document.getElementById('fileInput').addEventListener('change', e=>{
+  if(e.target.files[0]) loadFile(e.target.files[0]);
+});
+
+document.getElementById('loadDemoBtn').addEventListener('click', ()=>{
+  records = sampleData();
+  save();
+  render();
+  setStatus(`Loaded ${records.length} sample entries`);
+});
+
+document.getElementById('clearBtn').addEventListener('click', ()=>{
+  showConfirm('Clear all saved data from this browser?', (ok)=>{
+    if(!ok) return;
+    records = [];
+    localStorage.removeItem(STORAGE_KEY);
+    render();
+    setStatus('Cleared');
+  });
+});
+
+document.getElementById('exportBtn').addEventListener('click', ()=>{
+  if(records.length===0){ setStatus('Nothing to export', true); return; }
+  const headers = ['Inputter','Date Inputted','Tax Year','Client Name','Reviewer','Status','Date Completed','Docs Needed Requested','Inputter Notes','Reviewer Notes','Sent Back To Inputter','Send Back Date','Additional Documents/Reinput'];
+  const lines = [headers.join(',')];
+  records.forEach(r=>{
+    const row = [r.inputter, r.date, r.taxyear, r.client, r.reviewer, r.status, r.datecompleted, r.docsneeded, r.notes, r.reviewernotes, r.sentback ? 'YES' : 'NO', r.sentbackdate, r.additionaldocs]
+      .map(v => `"${String(v||'').replace(/"/g,'""')}"`);
+    lines.push(row.join(','));
+  });
+  const blob = new Blob([lines.join('\n')], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'inputter_tracker_export.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById('exportDashboardBtn').addEventListener('click', ()=>{
+  if(records.length===0){ setStatus('Nothing to export yet — load some data first', true); return; }
+  try{
+    const seedScript = `<script>window.__SEED_RECORDS = ${JSON.stringify(records)};<\/script>`;
+    const source = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+    const snapshot = source.replace('</head>', seedScript + '\n</head>');
+    const blob = new Blob([snapshot], {type:'text/html'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const today = todayLocalISO();
+    a.href = url;
+    a.download = `TaxAce_Inputters_Dashboard_${today}.html`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setStatus(`Exported dashboard snapshot (${records.length} entries) for sharing`);
+  }catch(err){
+    console.error(err);
+    setStatus('Could not export dashboard: ' + err.message, true);
+  }
+});
+
+['searchBox','filterReviewer','filterStatus','filterYear','filterInputter','filterSentBack'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', renderTable);
+  document.getElementById(id).addEventListener('change', renderTable);
+});
+
+document.getElementById('filterInputter').addEventListener('change', ()=>{
+  document.getElementById('logPanel').scrollIntoView({behavior:'smooth', block:'start'});
+});
+
+document.getElementById('searchBox').addEventListener('keydown', (e)=>{
+  if(e.key === 'Enter'){
+    document.getElementById('logPanel').scrollIntoView({behavior:'smooth', block:'start'});
+  }
+});
+
+document.getElementById('clearFilters').addEventListener('click', ()=>{
+  document.getElementById('searchBox').value='';
+  document.getElementById('filterReviewer').value='';
+  document.getElementById('filterStatus').value='';
+  document.getElementById('filterYear').value='';
+  document.getElementById('filterInputter').value='';
+  document.getElementById('filterSentBack').value='';
+  renderTable();
+});
+
+document.querySelectorAll('thead th[data-key]').forEach(th=>{
+  th.addEventListener('click', ()=>{
+    const key = th.dataset.key;
+    if(sortKey === key) sortDir *= -1; else { sortKey = key; sortDir = 1; }
+    renderTable();
+  });
+});
+
+document.getElementById('f_reviewer').addEventListener('change', function(){
+  const sel = this;
+  if(sel.value === '__other'){
+    showPrompt('New reviewer name:', '', (name)=>{
+      if(name && name.trim()){
+        const opt = document.createElement('option');
+        opt.value = name.trim(); opt.textContent = name.trim(); opt.selected = true;
+        sel.insertBefore(opt, sel.lastElementChild);
+      } else { sel.value = ''; }
+    });
+  }
+});
+
+document.getElementById('f_inputter').addEventListener('change', function(){
+  const sel = this;
+  if(sel.value === '__other'){
+    showPrompt('New inputter name:', '', (name)=>{
+      if(name && name.trim()){
+        const opt = document.createElement('option');
+        opt.value = name.trim(); opt.textContent = name.trim(); opt.selected = true;
+        sel.insertBefore(opt, sel.lastElementChild);
+      } else { sel.value = ''; }
+    });
+  }
+});
+
+document.getElementById('addEntryBtn').addEventListener('click', ()=>{
+  const client = document.getElementById('f_client').value.trim();
+  if(!client){ showAlert('Client name is required'); return; }
+  const reviewerSel = document.getElementById('f_reviewer');
+  const reviewer = reviewerSel.value === '__other' ? '' : reviewerSel.value;
+  const inputterSel = document.getElementById('f_inputter');
+  const inputter = inputterSel.value === '__other' ? '' : inputterSel.value;
+  if(!inputter){ showAlert('Please select who is logging this entry (Inputter)'); return; }
+  const entryStatus = document.getElementById('f_status').value;
+  const entry = {
+    id: uid(),
+    inputter,
+    date: document.getElementById('f_date').value || '',
+    taxyear: document.getElementById('f_taxyear').value.trim() || '2025',
+    client,
+    reviewer,
+    status: entryStatus,
+    datecompleted: entryStatus === 'Completed' ? todayLocalISO() : '',
+    docsneeded: document.getElementById('f_docsneeded').value,
+    additionaldocs: '',
+    notes: document.getElementById('f_notes').value.trim(),
+    reviewernotes: '',
+    sentback: false,
+    sentbackdate: ''
+  };
+  records.unshift(entry);
+  save();
+  render();
+  ['f_taxyear','f_client','f_notes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f_date').value = todayLocalISO();
+  document.getElementById('f_status').value='';
+  document.getElementById('f_docsneeded').value='';
+  reviewerSel.value='';
+  inputterSel.value='';
+  setStatus('Entry added');
+});
+
+// init
+document.getElementById('f_date').value = todayLocalISO();
+
+if(typeof window.__SEED_RECORDS !== 'undefined' && Array.isArray(window.__SEED_RECORDS) && window.__SEED_RECORDS.length){
+  records = window.__SEED_RECORDS;
+  save();
+  render();
+  setStatus(`${records.length} entries (exported snapshot)`);
+} else if(loadFromStorage() && records.length){
+  render();
+  setStatus(`${records.length} entries (saved locally)`);
+} else {
+  render();
+  setStatus('No data loaded');
+}
+</script>
+</body>
+</html>
