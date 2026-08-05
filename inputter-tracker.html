@@ -23,18 +23,26 @@
     --nav-fg:#f5f1e6;
   }
   html[data-theme="dark"]{
-    --paper:#16140f;
-    --paper-dim:#211d17;
-    --ink:#ece7db;
-    --ink-soft:#a89f8c;
+    --paper:#14171B;
+    --paper-dim:#1A1D22;
+    --ink:#F0EEE8;
+    --ink-soft:#C7C4BA;
     --rust:#d97a52;
     --rust-dim:#e69574;
     --green:#7fae76;
     --amber:#d9a94a;
-    --line:#3a352c;
-    --card:#1e1b16;
-    --nav-bg:#0c0b09;
+    --line:#2E333A;
+    --card:#1E2227;
+    --nav-bg:#0B0D0F;
     --nav-fg:#f5f1e6;
+  }
+  html[data-theme="dark"] header{
+    background:
+      repeating-linear-gradient(135deg, transparent, transparent 38px, rgba(255,255,255,0.025) 38px, rgba(255,255,255,0.025) 76px),
+      var(--paper);
+  }
+  html[data-theme="dark"] .modal-overlay{
+    background:rgba(0,0,0,0.65);
   }
   *{box-sizing:border-box;}
   body{
