@@ -711,6 +711,10 @@ window.addEventListener('storage', (e)=>{
   }
 });
 
+// Live Drive sync — paste the /exec URL from your deployed inputter_sync.gs Web App here.
+// Leave the placeholder in place and the dashboard just falls back to local-only mode.
+const APPS_SCRIPT_URL = 'PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE';
+
 const STORAGE_KEY = 'lyka_inputter_tracker_v1';
 const KNOWN_INPUTTERS = ['Lyka', 'Vena', 'Fayne'];
 const KNOWN_REVIEWERS = ['Annalyn', 'Lyndon', 'Dani', 'Jessel'];
@@ -874,6 +878,34 @@ function parseSheetRows(rows){
   return out;
 }
 
+// Live sync: this pulls a simple "Ready to Input" count from a Canopy export
+// that lands in Drive — a live queue of clients waiting on an inputter. It is
+// a completely different data shape from the Inputted Log (which only ever
+// comes from manual upload or manual entry), so this never touches `records`
+// at all — it just powers one read-only stat card.
+let readyToInputCount = null;
+let readyToInputMeta = '';
+
+function isLiveSyncConfigured(){
+  return APPS_SCRIPT_URL && !APPS_SCRIPT_URL.includes('PASTE_');
+}
+
+function fetchReadyToInputCount(onDone){
+  if(!isLiveSyncConfigured()){ onDone(null); return; }
+  fetch(APPS_SCRIPT_URL)
+    .then(r => r.json())
+    .then(data => {
+      if(!data.success) throw new Error(data.error || 'Unknown error from Apps Script');
+      readyToInputCount = data.readyToInputCount;
+      readyToInputMeta = `from "${data.sourceFile}"`;
+      onDone({ count: data.readyToInputCount, sourceFile: data.sourceFile, lastUpdated: data.lastUpdated });
+    })
+    .catch(err => {
+      console.error('Ready to Input sync failed:', err);
+      onDone({ error: err.message });
+    });
+}
+
 function loadFile(file){
   const reader = new FileReader();
   reader.onload = function(e){
@@ -996,6 +1028,7 @@ function renderStats(){
 
   const stats = [
     {num: total, lbl:'Total Entries'},
+    {num: readyToInputCount === null ? '—' : readyToInputCount, lbl:'Ready to Input (Canopy)', cls: readyToInputCount>0 ? 'rust' : ''},
     {num: completed, lbl:'Completed', cls:'rust'},
     {num: inProgress, lbl:'In Progress'},
     {num: onHold, lbl:'On Hold', cls: onHold>0 ? 'rust' : ''},
@@ -1319,9 +1352,30 @@ document.getElementById('navSearchBtn').addEventListener('click', ()=>{
 document.getElementById('refreshBtn').addEventListener('click', ()=>{
   loadFromStorage();
   render();
-  setStatus(`Refreshed — ${records.length} entries`);
-  // NOTE: once this dashboard is wired to a live Sheet/Apps Script sync,
-  // this handler is where the fetch-and-reload call should go.
+
+  if(!isLiveSyncConfigured()){
+    setStatus(`Refreshed — ${records.length} entries (Ready to Input not configured yet)`);
+    return;
+  }
+
+  const btn = document.getElementById('refreshBtn');
+  const original = btn.textContent;
+  btn.textContent = '⟳ Syncing...';
+  btn.disabled = true;
+  fetchReadyToInputCount((result)=>{
+    btn.textContent = original;
+    btn.disabled = false;
+    if(!result){
+      setStatus(`Refreshed — ${records.length} entries`);
+      return;
+    }
+    if(result.error){
+      setStatus('Ready to Input sync failed: ' + result.error, true);
+      return;
+    }
+    render();
+    setStatus(`Refreshed — ${records.length} entries · ${result.count} ready to input (from "${result.sourceFile}")`);
+  });
 });
 
 document.getElementById('themeToggleBtn').addEventListener('click', ()=>{
@@ -1500,6 +1554,17 @@ if(typeof window.__SEED_RECORDS !== 'undefined' && Array.isArray(window.__SEED_R
   render();
   setStatus('No data loaded');
 }
+
+if(isLiveSyncConfigured()){
+  fetchReadyToInputCount((result)=>{
+    if(!result || result.error){
+      if(result && result.error) console.error('Initial Ready to Input sync failed:', result.error);
+      return;
+    }
+    render();
+  });
+}
+
 </script>
 </body>
 </html>
